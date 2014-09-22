@@ -1,0 +1,604 @@
+/* comCoreTypes.idl -- VxDCOM base definitions */
+
+/* Copyright (c) 1999-2001, Wind River Systems, Inc. */
+
+/*
+modification history
+--------------------
+02i,10dec01,dbs  diab build
+02h,18oct01,nel  Correct def of CY type to conform to Microsoft spec.
+02g,11oct01,nel  Add conditional define for SIMNT build.
+02f,07aug01,dbs  return multiple interfaces during creation
+02e,06aug01,dbs  add registry-show capability
+02d,17jul01,dbs  fix widl_marshal attributes
+02c,21jun01,dbs  add IMalloc interface
+02b,20jun01,dbs  remove obsolete typedefs
+02a,20jun01,nel  Remove SafeArray and VARIANT defs to new files.
+01a,20jun01,dbs  created from WindTypes.idl
+*/
+
+[
+uuid(5E0645F9-6F69-11d3-A821-00C04F68A5B5),
+pointer_default(unique),
+local
+]
+interface IWindTypes
+    {
+/*
+ * Some typedefs not required at the C level.
+ */
+cpp_quote("#if 0")
+cpp_quote("/* These types are defined by the OS (vxWorks.h) */")
+typedef unsigned char   UCHAR;
+typedef unsigned short  USHORT;
+typedef unsigned long   ULONG;
+typedef int		BOOL;
+typedef unsigned int	UINT;
+cpp_quote("#endif")
+
+
+cpp_quote("#if !(defined (CPU) && defined (SIMNT) && (CPU == SIMNT))")
+cpp_quote("/* These are defined by the SIMNT BSP */")
+typedef short           WORD;
+typedef unsigned long   DWORD;
+cpp_quote("#endif")
+
+typedef unsigned char	BYTE;
+typedef char		CHAR;
+typedef short           SHORT;
+typedef long		LONG;
+typedef float		FLOAT;
+typedef double          DOUBLE;
+typedef long		SCODE;
+typedef long		HRESULT;
+typedef int		INT;
+typedef unsigned short	WCHAR;
+typedef unsigned short	OLECHAR;
+typedef void*		PVOID;
+typedef void*		LPVOID;
+
+// VxDCOM does not use the wchar_t as it varies from one architecture
+// to another, instead it uses unsigned short as WCHAR.
+
+typedef [string] OLECHAR*	LPOLESTR;
+typedef [string] WCHAR*		LPWSTR;
+typedef [string] const OLECHAR*	LPCOLESTR;
+typedef [string] const WCHAR*	LPCWSTR;
+ 
+cpp_quote("typedef long long LONGLONG;")
+cpp_quote("typedef long unsigned long ULONGLONG;")
+
+cpp_quote("#if 0")
+typedef hyper		LONGLONG;
+typedef unsigned hyper	ULONGLONG;
+cpp_quote("#else")
+cpp_quote("typedef LONGLONG hyper;")
+cpp_quote("typedef ULONGLONG uhyper;")
+cpp_quote("#endif")
+
+typedef LONGLONG	LARGE_INTEGER;
+typedef ULONGLONG	ULARGE_INTEGER;
+typedef struct _tagCY
+    {
+    LONGLONG		int64;
+    }			CY;
+typedef LONGLONG        OID;
+typedef LONGLONG        OXID;
+typedef unsigned short	PROTSEQ;
+ 
+cpp_quote("/* Basic IDL types */") 
+cpp_quote("typedef unsigned char byte;")
+cpp_quote("typedef unsigned char uchar;")
+//cpp_quote("typedef unsigned short ushort;")
+cpp_quote("typedef unsigned long ulong;")
+    
+typedef struct _FILETIME
+    {
+    DWORD dwLowDateTime;
+    DWORD dwHighDateTime;
+    } FILETIME, *PFILETIME, *LPFILETIME;
+
+typedef struct _SYSTEMTIME
+    {
+    WORD wYear;
+    WORD wMonth;
+    WORD wDayOfWeek;
+    WORD wDay;
+    WORD wHour;
+    WORD wMinute;
+    WORD wSecond;
+    WORD wMilliseconds;
+    } SYSTEMTIME, *PSYSTEMTIME, *LPSYSTEMTIME;
+
+typedef struct _SECURITY_ATTRIBUTES
+    {
+    DWORD nLength;
+    [size_is(nLength)] LPVOID lpSecurityDescriptor;
+    BOOL bInheritHandle;
+    } SECURITY_ATTRIBUTES, *PSECURITY_ATTRIBUTES, *LPSECURITY_ATTRIBUTES;
+
+typedef USHORT SECURITY_DESCRIPTOR_CONTROL, *PSECURITY_DESCRIPTOR_CONTROL;
+
+typedef PVOID PSID;      
+
+typedef struct _ACL
+    {
+    UCHAR AclRevision;
+    UCHAR Sbz1;
+    USHORT AclSize;
+    USHORT AceCount;
+    USHORT Sbz2;
+    } ACL;
+
+typedef ACL *PACL;
+
+typedef struct _SECURITY_DESCRIPTOR
+    {
+    UCHAR Revision;
+    UCHAR Sbz1;
+    SECURITY_DESCRIPTOR_CONTROL Control;
+    PSID Owner;
+    PSID Group;
+    PACL Sacl;
+    PACL Dacl;
+    } SECURITY_DESCRIPTOR, *PISECURITY_DESCRIPTOR;
+
+typedef struct _COAUTHIDENTITY
+    {
+    [string] LPWSTR	User;
+    ULONG		UserLength;
+    [string] LPWSTR	Domain;
+    ULONG		DomainLength;
+    [string] LPWSTR	Password;
+    ULONG		PasswordLength;
+    ULONG		Flags;
+    } COAUTHIDENTITY;
+
+typedef struct _COAUTHINFO
+    {
+    DWORD               dwAuthnSvc;
+    DWORD               dwAuthzSvc;
+    LPWSTR              pwszServerPrincName;
+    DWORD               dwAuthnLevel;
+    DWORD               dwImpersonationLevel;
+    COAUTHIDENTITY *    pAuthIdentityData;
+    DWORD               dwCapabilities;
+    } COAUTHINFO;
+
+typedef struct _COSERVERINFO
+    {
+    DWORD           dwReserved1;
+    LPWSTR          pwszName;
+    COAUTHINFO *    pAuthInfo;
+    DWORD           dwReserved2;
+    } COSERVERINFO;
+
+/* GUID Definition */
+cpp_quote("#ifndef GUID_DEFINED")
+cpp_quote("#define GUID_DEFINED")
+typedef struct _GUID
+    {
+    DWORD Data1;
+    WORD  Data2;
+    WORD  Data3;
+    BYTE  Data4[8];
+    } GUID, *LPGUID;
+    cpp_quote("#endif /* !GUID_DEFINED */")
+
+cpp_quote("extern const GUID GUID_NULL;")
+
+/* IID Definition */
+cpp_quote("#define IID_NULL GUID_NULL")
+typedef GUID IID;
+typedef IID* LPIID;
+cpp_quote("#define __IID_DEFINED__")
+
+/* CLSID Definition */ 
+typedef GUID CLSID;
+typedef CLSID* LPCLSID;
+cpp_quote("#define CLSID_NULL GUID_NULL")
+
+/* IPID Definition */
+typedef GUID IPID;
+typedef IPID* LPIPID;
+
+/* CATID Definition */ 
+typedef GUID CATID;
+typedef CATID* LPCATID;
+cpp_quote("#define CATID_NULL GUID_NULL")
+
+
+/*
+  Here, we use the WIDL-specific attribute [cpp_ref] to indicate that
+  a pointer should be treated as a C++ reference-type. In plain old C
+  this will still look like a pointer, but in C++ it will look like a
+  reference type.
+*/
+
+typedef [cpp_ref] const GUID* REFGUID;
+typedef [cpp_ref] const IID* REFIID;
+typedef [cpp_ref] const CLSID* REFCLSID;
+typedef [cpp_ref] const IPID* REFIPID;
+
+typedef enum tagCLSCTX
+    {
+	CLSCTX_INPROC_SERVER = 0x01,    
+	CLSCTX_INPROC_HANDLER = 0x02,   
+	CLSCTX_LOCAL_SERVER = 0x04,     
+	CLSCTX_INPROC_SERVER16 = 0x08,  
+	CLSCTX_REMOTE_SERVER = 0x10,     
+	CLSCTX_INPROC_HANDLER16 = 0x20,  
+	CLSCTX_INPROC_SERVERX86 = 0x40,  
+	CLSCTX_INPROC_HANDLERX86 = 0x80
+    } CLSCTX;
+
+typedef enum tagMSHLFLAGS
+    {
+        MSHLFLAGS_NORMAL = 0,        
+        MSHLFLAGS_TABLESTRONG = 1,   
+	MSHLFLAGS_TABLEWEAK = 2,     
+	MSHLFLAGS_NOPING = 4	     
+    } MSHLFLAGS;
+
+
+ 
+typedef enum tagMSHCTX
+    {
+	MSHCTX_LOCAL = 0,            
+	MSHCTX_NOSHAREDMEM = 1,      
+	MSHCTX_DIFFERENTMACHINE = 2, 
+	MSHCTX_INPROC = 3
+    } MSHCTX;
+
+ 
+typedef DWORD LCID;
+
+typedef struct _BYTE_BLOB
+    {
+                        unsigned long   clSize;
+    [size_is(clSize)]   byte            abData[];
+    } BYTE_BLOB;
+
+typedef [unique] BYTE_BLOB * UP_BYTE_BLOB;
+
+typedef struct _WORD_BLOB
+    {
+                        unsigned long   clSize;
+    [size_is(clSize)]   unsigned short  asData[];
+    } WORD_BLOB;
+
+typedef [unique] WORD_BLOB * UP_WORD_BLOB;
+
+typedef struct _DWORD_BLOB
+    {
+                        unsigned long   clSize;
+    [size_is(clSize)]   unsigned long   alData[];
+    } DWORD_BLOB;
+
+typedef [unique] DWORD_BLOB * UP_DWORD_BLOB;
+
+typedef struct _FLAGGED_BYTE_BLOB
+    {
+                        unsigned long   fFlags;
+                        unsigned long   clSize;
+    [size_is(clSize)]   byte            abData[];
+    } FLAGGED_BYTE_BLOB;
+
+typedef [unique] FLAGGED_BYTE_BLOB * UP_FLAGGED_BYTE_BLOB;
+
+typedef struct _FLAGGED_WORD_BLOB {
+                        unsigned long   fFlags;
+                        unsigned long   clSize;
+    [size_is(clSize)]   unsigned short  asData[];
+} FLAGGED_WORD_BLOB;
+
+typedef [unique] FLAGGED_WORD_BLOB * UP_FLAGGED_WORD_BLOB;
+
+typedef struct _BYTE_SIZEDARR
+    {
+                        unsigned long   clSize;
+    [size_is(clSize)]   byte     *      pData ;
+    } BYTE_SIZEDARR;
+
+typedef struct _SHORT_SIZEDARR
+    {
+                        unsigned long   clSize;
+    [size_is(clSize)]   unsigned short* pData ;
+    } WORD_SIZEDARR;
+
+typedef struct _LONG_SIZEDARR
+    {
+                        unsigned long   clSize;
+    [size_is(clSize)]   unsigned long * pData ;
+    } DWORD_SIZEDARR;
+
+typedef struct _HYPER_SIZEDARR
+    {
+                        unsigned long   clSize;
+    [size_is(clSize)]   hyper         * pData ;
+    } HYPER_SIZEDARR;
+
+typedef double DATE;
+
+typedef struct tagDEC {
+    USHORT wReserved;
+    BYTE  scale;
+    BYTE  sign;
+    ULONG Hi32;
+    ULONGLONG Lo64;
+} DECIMAL;
+
+// BSTR marshaling is handled by WIDL internally
+typedef [widl_marshal(bstr)] OLECHAR *  BSTR;
+typedef BSTR * LPBSTR;
+
+cpp_quote("/* 0 == FALSE, -1 == TRUE */")
+typedef short VARIANT_BOOL;
+cpp_quote("typedef BYTE boolean;")
+cpp_quote("#if 0")
+typedef boolean BOOLEAN;
+cpp_quote("#endif")
+    
+cpp_quote("#define VARIANT_TRUE ((VARIANT_BOOL)0xffff)")
+cpp_quote("#define VARIANT_FALSE ((VARIANT_BOOL)0)")
+
+typedef struct tagBLOB
+    {
+    ULONG cbSize;
+    [size_is(cbSize)]
+    BYTE  *pBlobData;
+    } BLOB, * LPBLOB;
+
+typedef ULONG PROPID;
+
+    }
+
+//
+// This interface (IUnknown) is the base interface of all COM objects.
+//
+
+[
+  local,
+  object,
+  uuid(00000000-0000-0000-C000-000000000046),
+  pointer_default(unique)
+]
+interface IUnknown
+    {
+    typedef [unique] IUnknown *LPUNKNOWN;
+    HRESULT QueryInterface(
+        [in] REFIID riid,
+        [out, iid_is(riid)] void **ppvObject);
+    ULONG AddRef();
+    ULONG Release();
+    }
+
+//
+// This interface (IClassFactory) requires special treatment (the
+// method CreateInstance() is marshaled quite differently, as if its
+// signature were:-
+//
+// HRESULT CreateInstance ([in] REFIID riid, [out, iid_is(riid)] IUnknown** ppObj);
+//
+// It is given the [local] attribute here so that WIDL does not
+// generate proxy/stubs for it, but the p/s is in fact hard-coded
+// elsewhere in the DCOM implementation.
+//
+
+[
+    object,
+    local,
+    uuid(00000001-0000-0000-C000-000000000046),
+    pointer_default(unique)
+]
+
+interface IClassFactory : IUnknown
+    {
+    typedef [unique] IClassFactory * LPCLASSFACTORY;
+
+    HRESULT CreateInstance
+	(
+        [in, unique] IUnknown * pUnkOuter,
+        [in] REFIID riid,
+        [out, iid_is(riid)] void **ppvObject
+	);
+
+    HRESULT LockServer ([in] BOOL fLock);
+    }
+
+
+//
+// This interface allows multiple remote QI operations at one time.
+//
+
+[
+    object,
+    local,
+    uuid(00000020-0000-0000-C000-000000000046)
+]
+
+interface IMultiQI : IUnknown
+    {
+    typedef [unique] IMultiQI* LPMULTIQI;
+
+    typedef struct tagMULTI_QI
+	{
+        const IID  *pIID;  
+        IUnknown   *pItf;  
+        HRESULT     hr;
+	} MULTI_QI;
+
+    HRESULT QueryMultipleInterfaces
+	(
+        [in]     ULONG      cMQIs,
+        [in,out] MULTI_QI  *pMQIs
+	);
+    }
+
+
+//
+// This interface (IRegistry) is used internally by comCoreLib and
+// VxCOM for registration of coclasses.
+//
+
+[
+    uuid(a01ccc02-cfeb-4311-8ebc-d7edb4a8de9c),
+    pointer_default(unique),
+    local,
+    object
+]
+interface IRegistry : IUnknown
+    {
+    /*
+     * RegisterClass - registers a GetClassObject() function pointer
+     * against the given CLSID in this registry.
+     */
+    HRESULT RegisterClass
+        (
+        [in] REFCLSID           clsid,
+        [in] void *             pfnGetClassObject
+        );
+
+    /*
+     * IsClassRegistered - determines if the CLSID is known to this
+     * registry. Returns S_OK if it is, or S_FALSE if not. Other
+     * failure values may be returned if appropriate.
+     */
+    HRESULT IsClassRegistered
+        (
+        [in] REFCLSID           clsid
+        );
+
+    /*
+     * CreateInstance - creates an instance of the class given by
+     * <clsid>, with the interface given by <iid>, using the <hint>
+     * argument if necessary, and returns the new object's interface
+     * pointer in the variable pointed to by <ppObj>.
+     */
+    HRESULT CreateInstance
+        (
+        [in] REFCLSID           clsid,
+        [in] IUnknown *         pUnkOuter,
+        [in] DWORD              dwClsContext,
+        [in] const char *       hint,
+        [in] ULONG              cMQIs,
+        [in,out] MULTI_QI *     pMQIs
+        );
+
+    /*
+     * GetClassObject - returns an instance of the class-object for
+     * the given <clsid>. The <iid> parameter indicates which
+     * interface on the class-object is to be returned, and is usually
+     * (though not always) IClassFactory.
+     */
+    HRESULT GetClassObject
+        (
+        [in] REFCLSID           clsid,
+        [in] REFIID             iid,
+        [in] DWORD              dwClsContext,
+        [in] const char *       hint,
+        [out, iid_is(iid)] IUnknown ** ppClsObj
+        );
+
+    /*
+     * This method allows a client to read back the CLSIDs held by
+     * this registry. The 'dwIndex' parameter identifies the position
+     * in the registry to read, if out of range it will return E_FAIL. 
+     */
+    HRESULT GetClassID
+        (
+        [in] DWORD              dwIndex,
+        [out] LPCLSID           pclsid
+        );        
+    
+    };
+
+
+[
+    object,
+    uuid(0002E000-0000-0000-C000-000000000046),
+    pointer_default(unique)
+]
+interface IEnumGUID : IUnknown
+    {
+    typedef [unique] IEnumGUID *LPENUMGUID;
+
+    HRESULT Next
+	(
+	[in] ULONG celt,
+	[out, size_is(celt), length_is(*pceltFetched)] GUID *rgelt,
+	[out] ULONG *pceltFetched
+	);
+
+    HRESULT Skip ([in] ULONG celt);
+
+    HRESULT Reset ();
+
+    HRESULT Clone ([out] IEnumGUID **ppenum);
+    }
+
+
+[
+    object,
+    uuid(00000101-0000-0000-C000-000000000046),
+    pointer_default(unique)
+]
+
+interface IEnumString : IUnknown
+    {
+
+    typedef [unique] IEnumString *LPENUMSTRING;
+
+    HRESULT Next
+	(
+        [in] ULONG celt,
+        [out, size_is(celt), length_is(*pceltFetched)]
+        LPOLESTR *rgelt,
+        [out] ULONG *pceltFetched
+	);
+
+    HRESULT Skip ([in] ULONG celt);
+
+    HRESULT Reset ();
+
+    HRESULT Clone ([out] IEnumString **ppenum);
+    }
+
+[
+    object,
+    uuid(00000100-0000-0000-C000-000000000046),
+    pointer_default(unique)
+]
+interface IEnumUnknown : IUnknown
+    {
+
+    typedef [unique] IEnumUnknown *LPENUMUNKNOWN;
+
+    HRESULT Next(
+        [in] ULONG celt,
+        [out, size_is(celt), length_is(*pceltFetched)]
+        IUnknown **rgelt,
+        [out] ULONG *pceltFetched);
+
+    HRESULT Skip ([in] ULONG celt);
+
+    HRESULT Reset ();
+
+    HRESULT Clone ([out] IEnumUnknown **ppenum);
+}
+
+[
+    object,
+    local,
+    uuid(00000002-0000-0000-C000-000000000046),
+    pointer_default(unique)
+]
+interface IMalloc : IUnknown
+    {
+    void* Alloc ([in] ULONG cb);        
+    void* Realloc ([in] void *pv, [in] ULONG cb);
+    void  Free ([in] void *pv);
+    ULONG GetSize ([in] void *pv);
+    int   DidAlloc ([in] void *pv);
+    void  HeapMinimize ();        
+    };

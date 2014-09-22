@@ -1,0 +1,428 @@
+/* orpc.idl - DCOM wire protocol */
+
+/* Copyright (c) 2000, Wind River Systems, Inc. */
+
+/*
+modification history
+--------------------
+01e,10oct01,dbs  add AddKnownInterface() method to IOrpcClientChannel
+01d,07aug01,dbs  add private SCM and OX interfaces
+01c,25jul01,dbs  add private proxy/stub interface definitions
+01b,06jul00,dbs  make OBJREF a cpp_quote
+01a,18feb00,dbs  created
+*/
+
+cpp_quote("/* Copyright (c) 2000 Wind River Systems, Inc. */")
+
+
+import "vxidl.idl";
+
+[
+    uuid(99fcfe60-5260-101b-bbcb-00aa0021347a),
+    pointer_default(unique)
+]
+interface ORPCTypes
+    {
+
+    /*
+     * Identifier Definitions
+     */
+
+    typedef hyper ID;
+
+    typedef ID      MID;        // Machine Identifier
+    typedef ID      OXID;       // Object Exporter Identifier
+    typedef ID      OID;        // Object Identifer
+    typedef ID      SETID;      // Ping Set Identifier
+    typedef GUID    IPID;       // Interface Pointer Identifier
+    typedef GUID    CID;        // Causality Identifier
+
+    /*
+     * ORPC Call Packet Format
+     */
+
+    // COM_MINOR_VERSION = 1   (NT4.0, SP1, SP2, DCOM95).
+    //      - Initial Release
+    //      - Must be used when talking to downlevel machines, including
+    //        on Remote Activation calls.
+    // COM_MINOR_VERSION = 2   (NT4.0 SP3 and beyond).
+    //      - Added ResolveOxid2 to IObjectExporter to retrieve the
+    //        COM version number of the server. Passed to the NDR engine
+    //        to fix fatal endian-ness flaw in the way OLEAUTOMATION marshals
+    //        BSTRS. Previous way used trailing padding, which is not NDR
+    //        compatible. See Bug# 69189.
+    // COM_MINOR_VERSION = 3   (NT4.0 SP4 and DCOM95 builds 1018 and beyond)
+    //      - OLEAUT32 added two new types to the SAFEARRAY, but SAFEARRAY
+    //        previously included the "default" keyword, which prevented
+    //        downlevel NDR engines from correctly handling any extensions.
+    //        Machines with version >=5.3 don't use "default" and will
+    //        gracefully handle future extensions to SAFEARRAY.
+
+    typedef enum tagCOM_VERSION_LEVEL
+	{
+	COM_MINOR_VERSION_1 = 1,
+	COM_MINOR_VERSION_2 = 2,
+	COM_MINOR_VERSION = 3,
+	COM_MAJOR_VERSION = 5
+	} COM_VERSION_LEVEL;
+
+    // Component Object Model version number
+    typedef struct tagCOMVERSION
+	{
+        unsigned short MajorVersion;    // Major version number
+        unsigned short MinorVersion;    // Minor version number
+	} COMVERSION;
+
+
+    // enumeration of additional information present in the call packet.
+    // Should be an enum but DCE IDL does not support sparse enumerators.
+
+    typedef enum tagORPC_FLAGS
+	{
+	ORPCF_NULL      = 0,		// no additional info in packet
+	ORPCF_LOCAL     = 1,		// call is local to this machine
+	ORPCF_RESERVED1 = 2,		// reserved for local use
+	ORPCF_RESERVED2 = 4,		// reserved for local use
+	ORPCF_RESERVED3 = 8,		// reserved for local use
+	ORPCF_RESERVED4 = 16		// reserved for local use
+	} ORPC_FLAGS;
+
+    // Extension to implicit parameters.
+    typedef struct tagORPC_EXTENT
+	{
+        GUID                    id;	// Extension identifier.
+        unsigned long           size;	// Extension size.
+        [size_is(size)] byte	data[];	// Extension data (round up to 8 bytes)
+	} ORPC_EXTENT;
+
+
+    // Array of extensions.
+    // NB:- extent-array is always a multiple of 2 when transmitted
+    typedef struct tagORPC_EXTENT_ARRAY
+	{
+        unsigned long size;     // Num extents.
+        unsigned long reserved; // Must be zero.
+        [size_is(size), unique] ORPC_EXTENT **extent; // extents 
+	} ORPC_EXTENT_ARRAY;
+
+
+    // implicit 'this' pointer which is the first [in] parameter on
+    // every ORPC call.
+    typedef struct tagORPCTHIS
+	{
+        COMVERSION      version;    // COM version number
+        unsigned long   flags;      // ORPCF flags for presence of other data
+        unsigned long   reserved1;  // set to zero
+        CID             causality;  // causality id of caller
+
+        // Extensions.
+        [unique] ORPC_EXTENT_ARRAY *extensions;
+	} ORPCTHIS;
+
+
+    // implicit 'that' pointer which is the first [out] parameter on
+    // every ORPC call.
+    typedef struct tagORPCTHAT
+	{
+        unsigned long  flags;       // ORPCF flags for presence of other data
+        [unique] ORPC_EXTENT_ARRAY *extensions;         // Extensions.
+	} ORPCTHAT;
+
+
+    /*
+     * Marshaled COM Interface Wire Format
+     */
+
+    // DUALSTRINGARRAYS are the return type for arrays of network addresses,
+    // arrays of endpoints and arrays of both used in many ORPC interfaces
+
+    typedef enum tagPROTSEQ_VALUE
+	{
+	NCADG_IP_UDP   = 0x08,
+	NCACN_IP_TCP   = 0x07,
+	NCADG_IPX      = 0x0E,
+	NCACN_SPX      = 0x0C,
+	NCACN_NB_NB    = 0x12,
+	NCACN_NB_IPX   = 0x0D,
+	NCACN_DNET_NSP = 0x04,
+	NCACN_HTTP     = 0x1F
+	} PROTSEQ_VALUE;
+	
+    typedef struct tagSTRINGBINDING
+	{
+         unsigned short wTowerId;     // Cannot be zero.
+         unsigned short aNetworkAddr; // Zero terminated.
+	} STRINGBINDING;
+
+    typedef enum tagCOM_AUTHZ
+	{
+	COM_C_AUTHZ_NONE = 0xffff
+	} COM_AUTHZ;
+
+    typedef struct tagSECURITYBINDING
+	{
+        unsigned short wAuthnSvc;  // Cannot be zero.
+        unsigned short wAuthzSvc;  // Must not be zero.
+        unsigned short aPrincName; // Zero terminated.
+	}  SECURITYBINDING;
+
+    typedef struct tagDUALSTRINGARRAY
+	{
+        unsigned short wNumEntries;     // Number of entries in array.
+        unsigned short wSecurityOffset; // Offset of security info.
+
+        // The array contains two parts, a set of STRINGBINDINGs
+        // and a set of SECURITYBINDINGs.  Each set is terminated by an
+        // extra zero.  The shortest array contains four zeros.
+
+        [size_is(wNumEntries)] unsigned short aStringArray[];
+	} DUALSTRINGARRAY;
+
+    // signature value for OBJREF (object reference, actually the
+    // marshaled form of a COM interface).
+
+    typedef enum tagOBJREF_FLAGS
+	{
+	OBJREF_SIGNATURE = 0x574f454d,  // 'MEOW'
+
+	// flag values for OBJREF
+	OBJREF_STANDARD = 0x1,		// standard marshaled objref
+	OBJREF_HANDLER  = 0x2,		// handler marshaled objref
+	OBJREF_CUSTOM   = 0x4,		// custom marshaled objref
+	} OBJREF_FLAGS;
+
+    typedef enum tagSTDOBJREF_FLAGS
+	{
+	// Flag values for a STDOBJREF (standard part of an OBJREF).
+	// SORF_OXRES1 - SORF_OXRES8 are reserved for the object
+	// exporters use only, object importers must ignore them and
+	// must not enforce MBZ.
+
+	SORF_NULL       = 0x0,		// convenient for initializing SORF
+
+	SORF_OXRES1     = 0x1,		// reserved for exporter
+	SORF_OXRES2     = 0x20,		// reserved for exporter
+
+	SORF_OXRES3     = 0x40,		// reserved for exporter
+	SORF_OXRES4     = 0x80,		// reserved for exporter
+	SORF_OXRES5     = 0x100,	// reserved for exporter
+	SORF_OXRES6     = 0x200,	// reserved for exporter
+	SORF_OXRES7     = 0x400,	// reserved for exporter
+	SORF_OXRES8     = 0x800,	// reserved for exporter
+
+	SORF_NOPING     = 0x1000	// Pinging is not required
+	} STDOBJREF_FLAGS;
+
+    // standard object reference
+    typedef struct tagSTDOBJREF
+	{
+        unsigned long  flags;              // STDOBJREF flags (see above)
+        unsigned long  cPublicRefs;        // count of references passed
+        OXID           oxid;               // oxid of server with this oid
+        OID            oid;                // oid of object with this ipid
+        IPID           ipid;               // ipid of Interface
+	} STDOBJREF;
+
+    /*
+     * OBJREF
+     *
+     * OBJREF is the format of a marshaled interface pointer. It is
+     * not actually defined in this IDL since it is (a) unnecessarily
+     * complex, and (b) only used at the C/C++ level .
+     */
+
+    cpp_quote("typedef struct tagOBJREF OBJREF;")
+    
+    // wire representation of a marshaled interface pointer
+    typedef struct tagMInterfacePointer
+	{
+        ULONG           ulCntData;          // size of data
+        [size_is(ulCntData)] BYTE abData[]; // data (OBJREF)
+	} MInterfacePointer;
+
+    typedef [unique] MInterfacePointer * PMInterfacePointer;
+
+    }
+
+[
+    uuid(b78d0404-80fb-11d5-99e5-00c04f68a5b5),
+    local,
+    object,
+    pointer_default(unique)
+]
+interface IOrpcProxy : IUnknown
+    {
+    HRESULT Connect ([in] IOrpcClientChannel* pChannel);
+    HRESULT Disconnect ();
+    };
+
+[
+    uuid(db88361c-80fb-11d5-98e4-00c04f68a5b5),
+    local,
+    object,
+    pointer_default(unique)
+]
+interface IOrpcClientChannel : IUnknown
+    {
+    /*
+     * This structure provides a buffer into which data is marshaled
+     * for ORPC transport. The <buf> field points to the raw memory,
+     * the size of the block is in <len>, and the data representation
+     * (in NDR encoding) is in <drep>.
+     */
+    
+    typedef struct tagMSHL_BUFFER
+        {
+        byte*   buf;
+        ULONG   len;
+        ULONG   drep;
+        } MSHL_BUFFER;
+
+    /*
+     * The function invokes method number <opnum> on the remote
+     * interface identified by <pipid> (which is of type <iid>)
+     * passing it the arguments contained in <pMshlBufIn>. On return,
+     * the result and returned arguments will be in the buffer at
+     * <pMshlBufOut>.
+     */
+    
+    HRESULT InvokeMethod
+        (
+        [in] REFIID             iid,
+        [in] const IPID *       pIpid,
+        [in] USHORT             opnum,
+        [in] const MSHL_BUFFER* pMshlBufIn,
+        [out] MSHL_BUFFER *     pMshlBufOut
+        );
+
+    /*
+     * This function informs the channel that the interface identified
+     * by <iid> is known to exist at the server end of the channel.
+     * This may be used by the channel to optimise network operations 
+     * regarding interface IDs.
+     */
+
+    HRESULT AddKnownInterface
+        (
+        [in] REFIID             iid
+        );
+    
+    /*
+     * This function allocates a marshaling buffer of size <nBytes>
+     * into the MSHL_BUFFER at <pBuf>. Any existing values in the
+     * structure are ignored, and overwritten on return.
+     */
+
+    HRESULT AllocBuffer
+        (
+        [in] MSHL_BUFFER*       pBuf,
+        [in] DWORD              nBytes
+        );
+
+
+    /*
+     * This function frees a previously-allocated marshaling buffer
+     * from the MSHL_BUFFER at <pBuf>. On return, the buffer is reset
+     * to the 'empty' state.
+     */
+
+    HRESULT FreeBuffer
+        (
+        [in] MSHL_BUFFER*       pBuf
+        );
+    
+    };
+
+#if 0
+/*
+ * This DCE (non-object) interface provides the private internal
+ * interface between the SCM and the rest of the DCOM subsystem. It
+ * allows clients to access the SCM to resolve OXIDs, and to activate
+ * remote servers.
+ */
+
+[
+    uuid(ece71f86-8b41-11d5-861c-00c04f68a5b5),
+    pointer_default(unique)
+]
+interface IPrivateSCM : IUnknown
+    {
+    /*
+     * This method causes the SCM to request a remote server to
+     * activate a coclass, and returns one or more interfaces to the
+     * local client.
+     */
+    
+    HRESULT IndirectActivation
+	(
+        [in] LPWSTR             pwszServerName, // PROTSEQ + remote server
+	[in] REFCLSID		clsid,		// CLSID to activate
+	[in] DWORD		mode,		// all-1's == get-class-obj
+	[in] DWORD		nItfs,		// num of interfaces
+	[in, size_is(nItfs)] IID *pIIDs,	// array of IIDs
+	[out] MInterfacePointer** ppItfData,	// returned interface(s)
+	[out] HRESULT*		pResults	// returned results per i/f
+	);
+
+    /*
+     * These methods add and remove an OID of some remote object
+     * to/from the SCM's ping tables.
+     */
+
+    HRESULT AddOid ([in] LPWSTR addr, [in] OID oidToAdd);
+    HRESULT DelOid ([in] LPWSTR addr, [in] OID oidToDel);
+
+    /*
+     * This method returns the next available OID value.
+     */
+
+    HRESULT GetNextOid ([out] OID *pOid);
+
+
+    /*
+     * This method returns the OXID-resolver's address for the given
+     * protocol sequences.
+     */
+    
+    HRESULT GetOxidResolverBinding
+        (
+        [in] USHORT             cProtseqs,
+        [in,size_is(cProtseqs)]
+        USHORT                  arProtseqs[],
+        [out] DUALSTRINGARRAY** ppdsaBindings
+        );
+
+    };
+
+/*
+ * This interface is the private interface between an Object Exporter
+ * and the SCM, and allows the SCM to ask the OX to activate classes,
+ * and to query it for useful info like the IPID of its IRemUnknown,
+ * etc.
+ */
+[
+    uuid(ae1891ce-8b49-11d5-9333-00c04f68a5b5),
+    object,
+    pointer_default(unique)
+]
+interface IPrivateOX : IUnknown
+    {
+    /*
+     * This method returns the string-binding (in the form of a
+     * DUALSTRINGARRAY) and the IPID of its IRemUnknown interface, for
+     * this object exporter. 
+     */
+    
+    HRESULT GetBindingInfo
+        (
+        [in]  USHORT            protseq,
+        [out] DUALSTRINGARRAY** ppdsaBindings
+        );
+
+    HRESULT GetIpidRemUnknown
+        (
+        [out] IPID *            pipidRemUnknown
+        );
+    };
+#endif
+

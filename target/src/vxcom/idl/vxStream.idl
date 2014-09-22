@@ -1,0 +1,132 @@
+/* Stream.idl - definition of IStream etc. */
+
+/* Copyright (c) 2000, Wind River Systems, Inc. */
+
+/*
+modification history
+--------------------
+01b,20jun01,nel  Change WindTypes.h to comCoreTypes.h
+01a,10feb00,dbs  created from vxidl.idl
+*/
+
+import "comCoreTypes.idl";
+
+[
+    local,
+    object,
+    uuid(0c733a30-2a1c-11ce-ade5-00aa0044773d),
+    pointer_default(unique)
+]
+interface ISequentialStream : IUnknown
+    {
+    HRESULT Read
+	(
+        [out, size_is(cb), length_is(*pcbRead)] void *pv,
+        [in] ULONG cb,
+        [out] ULONG *pcbRead
+	);
+
+    HRESULT Write
+	(
+        [in, size_is(cb)] const void *pv,
+        [in] ULONG cb,
+        [out] ULONG *pcbWritten
+	);
+    }
+
+
+[
+    local,
+    object,
+    uuid(0000000c-0000-0000-C000-000000000046),
+    pointer_default(unique)
+]
+
+interface IStream : ISequentialStream
+    {
+
+    typedef [unique] IStream *LPSTREAM;
+
+    typedef struct tagSTATSTG
+	{
+        LPOLESTR pwcsName;
+        DWORD type;
+        ULARGE_INTEGER cbSize;
+        FILETIME mtime;
+        FILETIME ctime;
+        FILETIME atime;
+        DWORD grfMode;
+        DWORD grfLocksSupported;
+        CLSID clsid;
+        DWORD grfStateBits;
+        DWORD reserved;
+	} STATSTG;
+
+    typedef enum tagSTGTY
+	{
+	STGTY_STORAGE   = 1,
+        STGTY_STREAM    = 2,
+        STGTY_LOCKBYTES = 3,
+        STGTY_PROPERTY  = 4
+	} STGTY;
+
+    typedef enum tagSTREAM_SEEK
+	{
+        STREAM_SEEK_SET = 0,
+        STREAM_SEEK_CUR = 1,
+        STREAM_SEEK_END = 2
+	} STREAM_SEEK;
+
+    typedef enum tagLOCKTYPE
+	{
+        LOCK_WRITE      = 1,
+        LOCK_EXCLUSIVE  = 2,
+        LOCK_ONLYONCE   = 4
+	} LOCKTYPE;
+
+    HRESULT Seek
+	(
+        [in] LARGE_INTEGER dlibMove,
+        [in] DWORD dwOrigin,
+        [out] ULARGE_INTEGER *plibNewPosition
+	);
+
+    HRESULT SetSize ([in] ULARGE_INTEGER libNewSize);
+
+    HRESULT CopyTo
+	(
+        [in, unique] IStream *pstm,
+        [in] ULARGE_INTEGER cb,
+        [out] ULARGE_INTEGER *pcbRead,
+        [out] ULARGE_INTEGER *pcbWritten
+	);
+
+    HRESULT Commit ([in] DWORD grfCommitFlags);
+
+    HRESULT Revert ();
+
+    HRESULT LockRegion
+	(
+        [in] ULARGE_INTEGER libOffset,
+        [in] ULARGE_INTEGER cb,
+        [in] DWORD dwLockType
+	);
+
+    HRESULT UnlockRegion
+	(
+        [in] ULARGE_INTEGER libOffset,
+        [in] ULARGE_INTEGER cb,
+        [in] DWORD dwLockType
+	);
+
+    HRESULT Stat
+	(
+        [out] STATSTG *pstatstg,
+        [in] DWORD grfStatFlag
+	);
+
+    HRESULT Clone([out] IStream **ppstm);
+
+    }
+
+

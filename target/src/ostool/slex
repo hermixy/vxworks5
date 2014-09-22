@@ -1,0 +1,285 @@
+#!/bin/sh
+#
+# slex - generate simple lex description from transition table
+#
+# Copyright 1984-1991 Wind River Systems, Inc.
+#
+# modification history
+# --------------------
+# 02a,10dec90,gae  changed TINY to "signed char".
+#
+#
+# SYNOPSIS
+# .CS
+# slex file.slex >file.c
+# .CE
+#
+# DESCRIPTION
+# The input file <file.slex> is parsed to generate a C program
+# that does lexical analysis according to the original table.
+#*/
+
+tool=`basename $0`
+prog=/tmp/$tool.$$
+
+#trap "rm -f $prog; exit 1" 0 1 2 3 15
+
+cat <<'EOF' >$prog
+# slex.awk - awk program to generate small-lex tables
+#
+# The following arrays are accumulated during the processing of the slex input
+# file:
+#   array [index]		= value			(source of definition)
+#   ---------------------------   --------------------- ----------------------
+#   final [final-state-name]	= final-state-number	(final state table)
+#   finalDef [final-state-number] = final-state-def-line(final state table)
+#   classDef [class-name]	= class-definition-line	(char class table)
+#   classList 			= list-of-class-names	(state table 1st line)
+#   state [state-name]		= state-number		(state tbl other lines)
+#   stateDef [state-number]	= state-definition-line	(state tbl other lines)
+#
+# The state of the scan is held in the variable "s" and can have the following 
+# values:
+#   init - looking for table definitions
+#   fs	- processing "final state" table
+#   cc	- processing "char classes" table
+#   st	- processing "state table" 1st line
+#   st2 - processing "state table" subsequent lines
+
+BEGIN		{
+		s = "init"
+		nstates = 0
+		nfinals = 0
+		ascii = " !\"#$%&'()*+,-./0123456789:;<=>?@" \
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`" \
+			"abcdefghijklmnopqrstuvwxyz{|}~"
+		}
+
+/^\014/		{ next }	# eat formfeeds
+/^ *$/		{ next }	# eat blank lines
+
+s == "init"	{
+		# look for start of table definitions
+		# print forward declarations of tables immediately
+
+		if ($0 ~ /FINAL STATES:/)
+		    s = "fs"
+		else if ($0 ~ /CHAR CLASSES:/)
+		    {
+		    print "int lexNclasses;"
+
+		    # XXX "signed" only in ANSI
+		    #print "signed char lexClass [];"
+		    s = "cc"
+		    }
+		else if ($0 ~ /STATE TABLE:/)
+		    {
+		    # XXX "signed" only in ANSI
+		    #print "signed char lexStateTable [];"
+		    s = "st"
+		    }
+		else if ($0 ~ /EJECT:/)
+		    s = "ej"
+		else
+		    print	# pass through everything else
+
+		next
+		}
+
+/^ *\/\*/	{ next }	# eat comment lines inside table definitions
+
+s == "fs"	{		# FINAL STATES
+		if ($0 ~ /^END/)
+		    {
+		    s = "init"
+		    next
+		    }
+
+		# get final state info
+
+		nfinals++
+		final [$1] = nfinals
+		finalDef [nfinals] = $0
+		next
+		}
+
+s == "st"	{		# 1st line of STATE TABLE is char class list
+		classList = $0
+		s = "st2"
+		next
+		}
+
+s == "st2"	{		# other lines of STATE TABLE are transitions
+		if ($0 ~ /^END/)
+		    {
+		    s = "init"
+		    next
+		    }
+
+		# get state name and state transitions
+
+		state [$1] = nstates
+		stateDef [nstates] = $0
+		nstates++
+		next
+		}
+
+s == "cc"	{			# CHAR CLASS definitions
+		if ($0 ~ /^END/)
+		    {
+		    s = "init"
+		    next
+		    }
+
+		# associate class definition with name
+
+		classDef [$1] = $0
+		next
+		}
+
+s == "ej"	{
+		# print action routine with case for each final state
+
+		print "int lexActions (state, string, nChars, pContinue)"
+		print "    int state; char *string; int nChars; BOOL*pContinue;"
+		print "    {"
+		print "    *pContinue = FALSE;"
+		print "    switch (state)"
+		print "        {"
+
+		for (i = 1; i <= nfinals; i++)
+		    {
+		    c = index (finalDef[i], "{")
+		    if (c == 0)
+			print "ERROR: final state missing \"{\":\n" finalDef[i]
+		    else
+			{
+			print "        case " i ":"
+			print "            " substr (finalDef[i], c) " break;"
+			}
+		    }
+
+		print "        }"
+		print "    *pContinue = TRUE;"
+		print "    return (0);"
+		print "    }"
+
+
+		# compute the char class table
+
+		nclasses = split (classList, class)
+
+		for (i = 2; i <= nclasses; i++)
+		    {
+		    clNum = i - 1
+
+		    # if class name was defined in CHAR CLASSES, 
+		    #   get each sub-def into "word" array; 
+		    #   otherwise just get class name into word[2].
+		    #   (note: 1st word of classDef is class name itself)
+
+		    if (classDef [class[i]] != "")
+			nwords = split (classDef [class[i]], word)
+		    else
+			{
+			nwords = 2
+			word[2] = class[i]
+			}
+
+		    # interpret each sub-definition: fill in class table
+
+		    for (w = 2; w <= nwords; w++)
+			{
+			cl = word[w]
+			n = -2
+
+			if (length (cl) == 1)		
+			    n = index (ascii, cl) + 31	# single character
+			else if (cl == "EOF")
+			    n = -1			# special EOF
+			else if (cl == "EOS")
+			    n = 0			# string terminator
+			else if (cl == "\\t")
+			    n = 9			# tab
+			else if (cl == "\\n")
+			    n = 10			# newline
+			else if (cl == "SP")
+			    n = 32			# space
+			else if (cl ~ /^\^/)
+			    n = index (ascii, substr (cl, 2)) - 33   # ctrl char
+			else if ((length (cl) == 3) && \
+				 (substr (cl, 2, 1) == "-"))
+			    {
+			    # character range
+
+			    n1 = index (ascii, substr (cl, 1, 1)) + 31
+			    n2 = index (ascii, substr (cl, 3, 1)) + 31
+			    for (j = n1; j <= n2; j++)
+				clTbl[j] = clNum
+			    }
+			else
+			    print "ERROR: unrecognized class definition: " cl
+
+			if (n != -2)
+			    clTbl[n] = clNum
+			}
+		    }
+
+		# print the class table
+
+		print "\nint lexNclasses = " nclasses ";"
+
+		print "\nsigned char lexClass [] ="
+		print "    {"
+		printf "    " clTbl [-1] ","
+		for (i = 0; i <= 127; i++)
+		    {
+		    if ((i % 16) == 0)
+			printf "\n    "
+		    printf "%2d, ", clTbl[i]
+		    }
+		print "\n    };"
+
+
+		# print out state table
+
+		print "\nsigned char lexStateTable [] ="
+		print "    {"
+		for (i = 0; i < nstates; i++)
+		    {
+		    # break state table line into individual state transitions
+		    # (note: first word of stateDef line is state name)
+
+		    n = split (stateDef [i], word)
+
+		    if (n != (nclasses + 1))
+			print "ERROR: wrong number of transitions for state " i
+
+		    # look-up and printout each state name
+
+		    printf "    "
+		    for (j = 2; j <= n; j++)
+			{
+			if (word[j] == ".")	
+			    printf "%2d,", i			# same state
+			else if (final [word[j]] != "")
+			    printf "-%d,", final [word[j]]      # final state
+			else if (state [word[j]] != "")
+			    printf "%2d,", state [word[j]]	# trans state
+			else
+			    print "\nunknown state: " word[j]	# unknown state
+			}
+
+		    printf "\n"
+		    }
+
+		print "    };"
+		s = "init"
+		next
+		}
+EOF
+
+awk -f $prog $*
+rm -f $prog
+
+exit 0

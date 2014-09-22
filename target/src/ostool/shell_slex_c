@@ -1,0 +1,759 @@
+/* shell.slex - small lex description for VxWorks shell */
+/*
+modification history
+--------------------
+02i,27nov01,pch  Provide floating-point exclusion based on _WRS_NO_TGT_SHELL_FP
+		 definition instead of testing a specific CPU type.
+02h,02mar95,yao  make floating point conditional for PPC403.
+02g,29aug94,ism  added ^M to nl char class so that PC scripts run (SPR#2899)
+02f,29aug94,ism  added \v and \a ansi escape sequences for strings (SPR#3690)
+02e,19aug92,jmm  fixed incorrect recognition of DATA symbols as TEXT
+02d,01aug92,srh  added check to match identifier against mangled C++ symbols.
+02c,30jul92,wmd  use N_TEXT to compare when checking for TEXT type symbol.
+02b,13dec91,gae  more ANSI cleanup.
+02a,19nov91,rrr  shut up some ansi warnings.
+01z,19nov91,rrr  shut up some warnings.
+01y,07oct91,rrr  added forward declaration for lexInit() (more forward).
+01x,10aug90,dnw  added forward declaration for lexInit().
+01w,08aug90,dnw  changed "%F" to "%lf" for ANSI compatibility.
+01v,10dec89,jcf  symbol table type now SYM_TYPE.
+01u,15oct88,dnw  improved support for Ada identifiers.
+		 made it conditional on sysAdaEnable.
+01t,09nov88,rdc  modifications to support ada identifiers.
+01s,30may88,dnw  changed to v4 names.
+01r,28may88,dnw  changed calls to atoi() and atof() to sscanf().
+01q,18mar88,gae  allowed '^' to occur in strings.
+01p,18nov87,gae  added T_UNKNOWN for undefined symbols.
+		 made shell float types default to double.
+01o,28oct87,gae  got rid of string type.
+01n,20oct87,gae  fixed lexScan() bug - used MAX_SHELL_LINE for temp. buffer.
+		   added scanning of octal chars, eg. '\377'.
+01m,07aug87,gae  fixed final state of octal.
+		 changed type specifiers to conventional C type casting.
+01l,01jun87,gae  added interpretation of bytes, words, floats, doubles.
+		 added type specifiers a la assembler, .[bwfdls].
+		 fixed table for "*=".
+01k,09jan87,gae  fixed '^', and '\^'.
+01j,24dec86,gae  added '->' back into table accidentally removed in 01h.
+01i,24nov86,llk  deleted SYSTEM conditional compiles.
+01h,08oct86,gae  added C assignment operators.
+01g,04jun86,dnw  changed sstLib calls to symLib.
+01f,11oct85,dnw  de-linted.
+01e,19jun85,dnw  added conditional compilation for BSD 4.2 load modules.
+01d,10sep84,dnw  included routines from lexLib directly in this module.
+		 fixed bug in automatic parens insertion.
+01c,29aug84,jlf  changed to treat "_" as a normal alphabetic character.
+01b,18aug84,dnw  changed to recognize and discard "/ * .... " style comments.
+		 changed to treat ';' like a NL for automatic insertion of ().
+01a,02aug84,dnw  written
+*/
+IMPORT BOOL sysAdaEnable;	/* TRUE = enable Ada support */
+IMPORT BOOL sysCplusEnable;	/* TRUE = enable C++ support */
+typedef enum		/* states for automatic insertion of parens in yylex */
+    {
+    FIRST_LEXEME,
+    NORMAL,
+    P_OPEN,
+    P_OPEN_DONE,
+    P_CLOSE,
+    P_CLOSE_DONE
+    } AUTO_STATE;
+LOCAL AUTO_STATE autoState;		/* state of auto parens mods */
+LOCAL char *nextChar;			/* ptr to next input char in line */
+LOCAL char tempStrings [MAX_SHELL_LINE];/* storage for strings while parsing */
+LOCAL char *nextTempString;		/* ptr to free space in tempStrings */
+/* forward declaration */
+static void lexNewLine (char *line);
+static int yylex (void);
+static char *addTempString (char *string);
+static void lexError (char *string, char *errmsg);
+static int getNum (char *string, char *fmtString, VALUE *pValue);
+static int getFloat (char *string, VALUE *pValue);
+static int getString (char *string, int nChars, VALUE *pValue);
+static int getChar (char *string, int nChars, VALUE *pValue);
+static int getId (char *string, VALUE *pValue);
+static int numAdaIdMatches (char *string, SYM_TYPE *pType, int *pValue);
+static BOOL countAdaIdMatch (char *symbol, int val, SYM_TYPE type, int arg);
+static BOOL printAdaIdMatch (char *symbol, int val, SYM_TYPE type, int arg);
+static BOOL adaIdMatch (char *symbol, char *id);
+static int typeCast (char *string);
+static int strToChar (char *string, char *pChar);
+static void lexInit (void);
+static int lexScan (void);
+static void lexRetract (void);
+int lexNclasses;
+#define RETRACT		lexRetract (); string[--nChars] = EOS
+int lexActions (state, string, nChars, pContinue)
+    int state; char *string; int nChars; BOOL*pContinue;
+    {
+    *pContinue = FALSE;
+    switch (state)
+        {
+        case 1:
+            { RETRACT;	} break;
+        case 2:
+            { RETRACT;	return (string[0]); } break;
+        case 3:
+            { 		return (string[0]); } break;
+        case 4:
+            { 		lexError(string, "invalid number"); return(LEX_ERROR); } break;
+        case 5:
+            {		lexError(string, "invalid string"); return(LEX_ERROR); } break;
+        case 6:
+            {		lexError(string, "invalid char");   return(LEX_ERROR); } break;
+        case 7:
+            { RETRACT;	return (getNum (string, "%o", &yylval)); } break;
+        case 8:
+            { RETRACT;	return (getNum (&string[2], "%x", &yylval)); } break;
+        case 9:
+            { RETRACT;	return (getNum (&string[1], "%x", &yylval)); } break;
+        case 10:
+            { RETRACT;	return (getNum (string, "%d", &yylval)); } break;
+        case 11:
+            { RETRACT;	return (getFloat (string, &yylval)); } break;
+        case 12:
+            { RETRACT;	return (getId (string, &yylval)); } break;
+        case 13:
+            {		return (getString (string, nChars, &yylval)); } break;
+        case 14:
+            {		return (getChar (string, nChars, &yylval)); } break;
+        case 15:
+            {		return (OR); } break;
+        case 16:
+            {		return (AND); } break;
+        case 17:
+            {		return (EQ); } break;
+        case 18:
+            {		return (NE); } break;
+        case 19:
+            {		return (GE); } break;
+        case 20:
+            {		return (LE); } break;
+        case 21:
+            { RETRACT;	return (ROT_RIGHT); } break;
+        case 22:
+            { RETRACT;	return (ROT_LEFT); } break;
+        case 23:
+            {		return (PTR); } break;
+        case 24:
+            {		return (INCR); } break;
+        case 25:
+            {		return (DECR); } break;
+        case 26:
+            {		return (ADDA); } break;
+        case 27:
+            {		return (SUBA); } break;
+        case 28:
+            {		return (MULA); } break;
+        case 29:
+            {		return (DIVA); } break;
+        case 30:
+            {		return (MODA); } break;
+        case 31:
+            {		return (SHLA); } break;
+        case 32:
+            {		return (SHRA); } break;
+        case 33:
+            {		return (ANDA); } break;
+        case 34:
+            {		return (ORA); } break;
+        case 35:
+            {		return (XORA); } break;
+        case 36:
+            {		return (NL); } break;
+        case 37:
+            {		return (ENDFILE); } break;
+        }
+    *pContinue = TRUE;
+    return (0);
+    }
+
+int lexNclasses = 27;
+
+signed char lexClass [] =
+    {
+    26,
+    25,  0,  0,  0, 26,  0,  0,  0,  0,  1, 25,  0,  0, 25,  0,  0, 
+     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+     1, 16, 10,  0, 12, 23, 14, 11,  0,  0, 22, 20,  0, 19,  8, 21, 
+     2,  3,  3,  3,  3,  3,  3,  3,  4,  4,  0,  0, 18, 15, 17,  0, 
+     0,  5,  5,  5,  5,  5,  5,  7,  7,  7,  7,  7,  7,  7,  7,  7, 
+     7,  7,  7,  7,  7,  7,  7,  7,  6,  7,  7,  0,  9,  0, 24,  7, 
+     0,  5,  5,  5,  5,  5,  5,  7,  7,  7,  7,  7,  7,  7,  7,  7, 
+     7,  7,  7,  7,  7,  7,  7,  7,  6,  7,  7,  0, 13,  0,  0,  0, 
+    };
+
+signed char lexStateTable [] =
+    {
+    -3, 1, 2, 8, 8,11,11,11, 9,-3,12,14, 6,19,20,21,22,23,24,25,26,16,27,28,29,-36,-37,
+    -1, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -10,-10, 3, 3,-4,-4, 4,-4,10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,
+    -7,-7, 3, 3,-4,-4,-4,-4,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,-7,
+    -4,-4, 5, 5, 5, 5,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,
+    -8,-8, 5, 5, 5, 5,-4,-4,-4,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,
+    -4,-4, 7, 7, 7, 7,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,
+    -9,-9, 7, 7, 7, 7,-4,-4,-4,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,
+    -10,-10, 8, 8, 8,-4,-4,-4,10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,-10,
+    -11,-11,10,10,10,-4,-4,-4,-4,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,
+    -11,-11,10,10,10,-4,-4,-4,-4,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,
+    -12,-12,11,11,11,11,11,11,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,-12,
+    12,12,12,12,12,12,12,12,12,13,-13,12,12,12,12,12,12,12,12,12,12,12,12,12,12,-5,-5,
+    12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,13,-5,-5,
+    14,14,14,14,14,14,14,14,14,15,14,-14,14,14,14,14,14,14,14,14,14,14,14,14,14,-6,-6,
+    14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,-6,-6,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-29,-2,-2,-2,-2,-2,-2,17,-2,-2,-2,-2,
+    17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,18,17,17,17,17,
+    17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17, 0,17,17,17,17,17,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-15,-2,-34,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-16,-33,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-17,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-18,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-19,-2,30,-2,-2,-2,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-20,-2,-2,31,-2,-2,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-27,-2,-23,-2,-25,-2,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-26,-2,-2,-2,-2,-24,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-28,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-30,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
+    -2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-35,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
+    -21,-21,-21,-21,-21,-21,-21,-21,-21,-21,-21,-21,-21,-21,-21,-32,-21,-21,-21,-21,-21,-21,-21,-21,-21,-21,-21,
+    -22,-22,-22,-22,-22,-22,-22,-22,-22,-22,-22,-22,-22,-22,-22,-31,-22,-22,-22,-22,-22,-22,-22,-22,-22,-22,-22,
+    };
+/*******************************************************************************
+*
+* lexNewLine - initialize for lexical scan of new line
+*
+* RETURNS: N/A
+*/
+LOCAL void lexNewLine
+    (
+    char *line
+    )
+    {
+    lexInit ();
+    nextChar = line;
+    nextTempString = tempStrings;
+    autoState = FIRST_LEXEME;
+    }
+/*******************************************************************************
+*
+* yylex - get next lexeme for yacc
+*
+* This routine is called by yacc to get the next input lexeme.
+* In addition to simply calling lexScan to do the scan, this routine
+* also handles the automatic insertion of parens around the arguements
+* of a "top-level" routine call.  If the first lexeme scanned from a new
+* line is a T_SYMBOL (text id) and the second lexeme is NOT a '(',
+* then the second lexeme is withheld and a '(' returned instead.
+* The withheld lexeme is returned next.  Scanning then proceeds normally
+* until a NL (newline) lexeme is scanned.  The NL is withheld and a
+* ')' is returned instead, with the NL being returned next.
+*
+* RETURNS: next lexeme.
+*/
+LOCAL int yylex (void)
+    {
+    static int heldCode;
+    FAST int code;
+    switch (autoState)
+	{
+        case FIRST_LEXEME:		/* first lex scan of new line */
+	    code = lexScan ();
+	    autoState = (code == T_SYMBOL) ? P_OPEN : NORMAL;
+	    break;
+	case NORMAL:			/* parens not required to be inserted */
+	    code = lexScan ();
+	    if (code == ';')
+		autoState = FIRST_LEXEME;
+	    break;
+	case P_OPEN:			/* looking for '(' */
+	    code = lexScan ();
+	    if (code == '(')
+		autoState = NORMAL;
+	    else
+		{
+		heldCode = code;
+		code = '(';
+		autoState = P_OPEN_DONE;
+		}
+	    break;
+	case P_OPEN_DONE:		/* artificial '(' has been returned */
+	    if ((heldCode == NL) || (heldCode == ';'))
+		{
+		code = ')';
+		autoState = P_CLOSE_DONE;
+		}
+	    else
+		{
+		code = heldCode;
+		autoState = P_CLOSE;
+		}
+	    break;
+	case P_CLOSE:			/* looking for NL or ';' */
+	    code = lexScan ();
+	    if ((code == NL) || (code == ';'))
+		{
+		heldCode = code;
+		code = ')';
+		autoState = P_CLOSE_DONE;
+		}
+	    break;
+	case P_CLOSE_DONE:		/* artificial ')' has been returned */
+	    code = heldCode;
+	    autoState = FIRST_LEXEME;
+	    break;
+	default:
+	    printf ("yylex: invalid state %#x\n", autoState);
+	    code = 0;	/* invalid? */
+	    break;
+	}
+    return (code);
+    }
+/*******************************************************************************
+*
+* addTempString - add string to temporary storage
+*
+* This routine adds the specified string to the during-parse temporary
+* string storage.
+*
+* RETURNS: pointer to new string appended to temporary area.
+*/
+LOCAL char *addTempString
+    (
+    char *string
+    )
+    {
+    char *newString = nextTempString;
+    while (*string != EOS)
+	string += strToChar (string, nextTempString++);
+    *(nextTempString++) = EOS;
+    return (newString);
+    }
+/*******************************************************************************
+*
+* lexError - report error in lex scan
+*
+* RETURNS: N/A
+*/
+LOCAL void lexError
+    (
+    char *string,
+    char *errmsg
+    )
+    {
+    printf ("%s: %s\n", errmsg, string);
+    }
+/*******************************************************************************
+*
+* getNum - interpret scanned string as integer
+*
+* RETURNS: NUMBER
+*/
+LOCAL int getNum
+    (
+    char *string,
+    char *fmtString,
+    VALUE *pValue
+    )
+    {
+    pValue->side = RHS;
+    pValue->type = T_INT;
+    sscanf (string, fmtString, &pValue->value.rv);
+    return (NUMBER);
+    }
+/*******************************************************************************
+*
+* getFloat - interpret scanned string as float
+*
+* RETURNS: FLOAT
+*/
+LOCAL int getFloat
+    (
+    char *string,
+    VALUE *pValue
+    )
+    {
+#ifndef	_WRS_NO_TGT_SHELL_FP
+    pValue->side = RHS;
+    pValue->type = T_DOUBLE;
+    sscanf (string, "%lf", &pValue->value.dp);
+#endif	/* _WRS_NO_TGT_SHELL_FP */
+    return (FLOAT);
+    }
+/*******************************************************************************
+*
+* getString - interpret scanned string as quoted string
+*
+* RETURNS: STRING
+*/
+LOCAL int getString
+    (
+    char *string,
+    int nChars,
+    VALUE *pValue
+    )
+    {
+    pValue->side = RHS;
+    pValue->type = T_INT;
+    string [nChars - 1] = EOS;
+    pValue->value.rv = (int)addTempString (&string[1]);
+    return (STRING);
+    }
+/*******************************************************************************
+*
+* getChar - interpret scanned string as quoted character
+*
+* RETURNS: CHAR
+*/
+LOCAL int getChar
+    (
+    char *string,
+    int nChars,
+    VALUE *pValue
+    )
+    {
+    char ch;
+    int n = strToChar (&string [1], &ch);
+    if (nChars != (n + 2))
+	{
+	lexError (string, "invalid char"); 
+	return (LEX_ERROR);
+	}
+    pValue->side       = RHS;
+    pValue->type       = T_BYTE;
+    pValue->value.byte = ch;
+    return (CHAR);
+    }
+/*******************************************************************************
+*
+* getId - interpret scanned string as identifier or keyword
+*
+* RETURNS: TYPECAST, {T,D,U}_SYMBOL
+*/
+LOCAL int getId
+    (
+    char *string,
+    FAST VALUE *pValue
+    )
+    {
+    char     tempString [MAX_SHELL_LINE + 1];
+    SYM_TYPE type;
+    char     *value;
+    int	     t = typeCast (string);
+    if (t != ERROR)
+	{
+	pValue->type = (TYPE)t;
+	return (TYPECAST);
+	}
+    tempString[0] = '_';
+    strncpy (&tempString[1], string, MAX_SHELL_LINE);
+    tempString [MAX_SHELL_LINE] = EOS;
+    if ((symFindByName (sysSymTbl, &tempString[1], &value, &type) == OK) ||
+        (symFindByName (sysSymTbl, &tempString[0], &value, &type) == OK) ||
+        (type = N_TEXT, value = (char *) taskNameToId (&tempString[1]),
+	 (int) value != ERROR))
+	{
+	pValue->value.lv = (int *) value;
+	pValue->type     = T_INT;
+	pValue->side     = LHS;
+	if ((type & 0xe) == N_TEXT) /* only need to check three bits of type*/
+	    return (T_SYMBOL);
+	else
+	    return (D_SYMBOL);
+	}
+    if (sysAdaEnable)
+	{
+	/* check for ada names of the form "_A_<symbolname>.<anything>"
+	 * a match occurs only if the result is unambiguous. */
+	switch (numAdaIdMatches (string, &type, (int *) &pValue->value.lv))
+	    {
+	    case 0:
+		break;
+	    case 1:
+		pValue->type = T_INT;
+		pValue->side = LHS;
+		if (type & N_TEXT)
+		    return (T_SYMBOL);
+		else
+		    return (D_SYMBOL);
+	    default:
+		printf ("%s: ambiguous Ada identifier - Possibilities include:\n", string);
+		symEach (sysSymTbl, (FUNCPTR)printAdaIdMatch, (int)string);
+	    }
+	}
+    if (sysCplusEnable)
+	{
+	/* check for mangled C++ names; return unique match or nothing */
+	
+	if (cplusMatchMangled(sysSymTbl, string, &type,
+			    (int *) &pValue->value.lv))
+	    {
+	    pValue->type = T_INT;
+	    pValue->side = LHS;
+ 	    if ((type & N_TYPE) == N_TEXT)
+		return T_SYMBOL;
+	    else
+		return D_SYMBOL;
+	    }
+	}
+    /* identifier not found */
+	
+    pValue->side = RHS;
+    pValue->type = T_UNKNOWN;
+    pValue->value.rv = (int)addTempString (string);
+    return (U_SYMBOL);
+    }
+/* HIDDEN */
+typedef struct
+    {
+    char *string;
+    int numOccurrences;
+    SYM_TYPE type;
+    int value;
+    } ADA_MATCH;
+/* END HIDDEN */
+/*******************************************************************************
+*
+* numAdaIdMatches - attempt to match id with bizarre ada names
+*
+* RETURNS: number of potential matches
+*/
+LOCAL int numAdaIdMatches
+    (
+    char *string,
+    SYM_TYPE *pType,
+    int *pValue
+    )
+    {
+    ADA_MATCH adaMatch;
+    adaMatch.string = string;
+    adaMatch.numOccurrences = 0;
+    symEach (sysSymTbl, (FUNCPTR)countAdaIdMatch, (int)&adaMatch);
+    *pType = adaMatch.type;
+    *pValue = adaMatch.value;
+    return (adaMatch.numOccurrences);
+    }
+/*******************************************************************************
+*
+* countAdaIdMatch - count number of symbols that match id as Ada symbol
+*
+* count ada names of the form "_A_<id>.<anything>"
+* called via symEach.
+*
+* RETURNS: TRUE
+*/
+LOCAL BOOL countAdaIdMatch
+    (
+    char *symbol,	/* symbol from symbol table */
+    int val,
+    SYM_TYPE type,
+    int arg
+    )
+    {
+    FAST ADA_MATCH *pAdaMatch = (ADA_MATCH *) arg;
+    if (adaIdMatch (symbol, pAdaMatch->string))
+	{
+	pAdaMatch->numOccurrences++;
+	pAdaMatch->type = type;
+	pAdaMatch->value = val;
+	}
+    return (TRUE);
+    }
+/*******************************************************************************
+*
+* printAdaIdMatch - print a symbol if it is a potential ada name match
+*
+* called via symEach
+*
+* RETURNS: TRUE
+*
+* ARGSUSED2
+*/
+LOCAL BOOL printAdaIdMatch
+    (
+    char *symbol,	/* symbol from symbol table */
+    int val,
+    SYM_TYPE type,
+    int arg		/* id being sought */
+    )
+    {
+    if (adaIdMatch (symbol, (char *) arg))
+	printf ("%s\n", symbol);
+    return (TRUE);
+    }
+/*******************************************************************************
+*
+* adaIdMatch - determine if a symbol is an Ada match for an id.
+*
+* RETURNS: TRUE if symbol is of form "_A_<id>" or "_A_<id>.<anything>".
+*/
+LOCAL BOOL adaIdMatch
+    (
+    FAST char *symbol,
+    FAST char *id
+    )
+    {
+    if ((symbol [0] != '_') || (symbol [1] != 'A') || (symbol [2] != '_'))
+	return (FALSE);
+    symbol += 3;	/* skip "_A_" */
+    while ((*id != EOS) && (*symbol != EOS) && (*id == *symbol))
+	{
+	++id;
+	++symbol;
+	}
+    return ((*id == EOS) && ((*symbol == EOS) || (*symbol == '.')));
+    }
+/*******************************************************************************
+*
+* typeCast - determine if string is a keyword type cast
+*
+* RETURNS: T_{BYTE,WORD,INT,FLOAT,DOUBLE}, or ERROR
+*/
+LOCAL int typeCast
+    (
+    FAST char *string
+    )
+    {
+    static char *typen [] =
+#ifndef	_WRS_NO_TGT_SHELL_FP
+	{"char", "short", "int", "long", "float", "double"};
+#else	/* _WRS_NO_TGT_SHELL_FP */
+	{"char", "short", "int", "long"};
+#endif	/* _WRS_NO_TGT_SHELL_FP */
+    static TYPE  typet [] =
+#ifndef	_WRS_NO_TGT_SHELL_FP
+	{T_BYTE, T_WORD, T_INT, T_INT, T_FLOAT, T_DOUBLE};
+#else	/* _WRS_NO_TGT_SHELL_FP */
+	{T_BYTE, T_WORD, T_INT, T_INT};
+#endif	/* _WRS_NO_TGT_SHELL_FP */
+    FAST int ix;
+    for (ix = 0; ix < NELEMENTS (typet); ix++)
+	{
+	if (strcmp (string, typen [ix]) == 0)
+	    return ((int)typet [ix]);
+	}
+    return (ERROR);
+    }
+/*******************************************************************************
+*
+* strToChar - get a possibly escaped character from a string
+*
+* RETURNS: number of characters parsed and character in <pChar>.
+*/
+LOCAL int strToChar
+    (
+    FAST char *string,
+    char *pChar
+    )
+    {
+    FAST int nchars = 1;
+    int num;
+    FAST char ch;
+    if (*string != '\\')
+	{
+	*pChar = *string;
+	return (nchars);
+	}
+    string++;
+    if ((*string >= '0') && (*string <= '7'))
+	{
+	sscanf (string, "%o", &num);
+	ch = num % 0400;
+	while ((*string >= '0') && (*string <= '7'))
+	    {
+	    ++string;
+	    ++nchars;
+	    }
+	}
+    else
+	{
+	nchars++;
+	switch (*string)
+	    {
+	    case 'n':  ch = '\n'; break;
+	    case 't':  ch = '\t'; break;
+	    case 'b':  ch = '\b'; break;
+	    case 'r':  ch = '\r'; break;
+	    case 'f':  ch = '\f'; break;
+	    case '\\': ch = '\\'; break;
+	    case '\'': ch = '\''; break;
+	    case '"':  ch = '"'; break;
+	    case 'a':  ch = (char)0x07; break;
+	    case 'v':  ch = (char)0x0b; break;
+	    default:   ch = *string; break;
+	    }
+	}
+    *pChar = ch;
+    return (nchars);
+    }
+/* lexeme scan routines */
+#define EMPTY		-2
+LOCAL int retractChar;
+LOCAL int lastChar;
+/*******************************************************************************
+*
+* lexInit - initialize lex scan routines
+*
+* RETURNS: N/A
+*/
+LOCAL void lexInit (void)
+    {
+    retractChar = EMPTY;
+    }
+/*******************************************************************************
+*
+* lexScan - scan input for next lexeme
+*
+* RETURNS: next lexeme.
+*/
+LOCAL int lexScan (void)
+    {
+    FAST int ch;
+    FAST int state;
+    int nChars;
+    int code;
+    BOOL scanContinue;
+    char string [MAX_SHELL_LINE + 1];
+    do
+	{
+	/* get first character; use any retracted character first */
+	if (retractChar != EMPTY)
+	    {
+	    ch = retractChar;
+	    retractChar = EMPTY;
+	    }
+	else
+	    ch = *(nextChar++);
+	/* consume characters until final state reached */
+	state = 0;
+	for (nChars = 0; nChars < MAX_SHELL_LINE; nChars++)
+	    {
+	    /* consume character and make state transition */
+	    string [nChars] = ch;
+	    state = lexStateTable [state * lexNclasses + lexClass [ch + 1]];
+	    /* if final state reached, quit; otherwise get next character */
+	    if (state < 0)
+		{
+		nChars++;
+		break;
+		}
+	    ch = *(nextChar++);
+	    }
+	/* final state reached */
+	state = -state;
+	string [nChars] = EOS;
+	lastChar = ch;
+	code = lexActions (state, string, nChars, &scanContinue);
+	}
+    while (scanContinue);
+    return (code);
+    }
+/*******************************************************************************
+*
+* lexRetract - retract last character consumed
+*
+* RETURNS: N/A
+*/
+LOCAL void lexRetract (void)
+    {
+    retractChar = lastChar;
+    }

@@ -1,0 +1,109 @@
+# defs.exclude - what not to extract from the toolchain libraries
+#
+# modification history
+# --------------------
+# 01m,20may02,sn   Removed torn_stubs.o and lib_err.o (not used)
+# 01n,30apr02,sn   Removed m16_fglue.o
+# 01m,17apr02,mrs  Move frameinfo.o and framedb.o to libcplus.a, SPR 75251.
+# 01l,05apr02,f_b  xfvalues.o xvalues.o should not be excluded for sh
+# 01k,04mar02,sn   removed dummy _fp_round defn from dp32.s; use Diab one instead
+# 01j,14feb02,dyv  Trying to remover line for realfp.o in cf specific lib,
+#                  not needed.
+# 01i,22jan02,sn   exclude hfp* for PPC (because they use .sdata2, and not needed);
+#                  swcom and swuncom (not needed)
+# 01h,08jan02,to   exclude sf for ARM (except Thumb mode)
+# 01g,11dec01,sn   don't exclude rtahooks.o
+# 01f,10dec01,sn   exclude rtahooks.o, torn_jstb.o, link.o;
+#                  exclude sf for PPC440
+# 01e,04dec01,to   exclude call_via.o module, use ../common/arm_call_via.s
+# 01d,03dec01,sn   save/restore functions now defined in ../common/saverest.s
+# 01c,14nov01,sn   don't use dinkum math lib for SH7750
+# 01b,14nov01,sn   cleaned up; added PPC403/PPC405, longjmp/setjmp
+# 01a,13nov01,sn   wrote
+#
+# DESCRIPTION
+# This file contains the knowledge of which object files should
+# not be pulled out of the toolchain libraries (because 
+# they define symbols that are already provided by VxWorks).
+
+# Put objects that should always be excluded in
+# EXCLUDE_OBJS_COMMON
+#
+# Put objects that should be excluded for a particular arch family in
+# EXCLUDE_OBJS_$(TOOLENV)
+#
+# Put objects that should be excluded for a particular CPU in
+# EXCLUDE_OBJS_$(CPU)$(TOOL)
+
+OBJS_SF_PPC                  = sfpdadd.o sfpdcmp.o sfpdcmpe.o sfpddiv.o \
+                               sfpdfeq.o sfpdfne.o sfpdmul.o sfpdneg.o sfpfadd.o \
+                               sfpfcmp.o sfpfcmpe.o sfpfdiv.o sfpffeq.o sfpffne.o \
+                               sfpfmul.o sfpfneg.o \
+                               sfpddtof.o sfpddtoi.o sfpddtou.o sfpdfge.o sfpdfgt.o \
+                               sfpdfle.o sfpdflt.o sfpditod.o sfpdutod.o \
+                               sfpffge.o sfpffgt.o sfpffle.o sfpfflt.o sfpfftod.o \
+                               sfpfftoi.o sfpfftou.o sfpfitof.o sfpfutof.o
+
+OBJS_SF_SH                   = sfpdadd.o sfpddiv.o sfpddtof.o sfpddtoi.o \
+                               sfpddtou.o sfpdfeq.o sfpdfge.o sfpdfgt.o \
+                               sfpdfle.o sfpdflt.o sfpdfne.o sfpditod.o \
+                               sfpdmul.o sfpdneg.o sfpdutod.o sfpfadd.o \
+                               sfpfdiv.o sfpffeq.o sfpffge.o sfpffgt.o \
+                               sfpffle.o sfpfflt.o sfpffne.o sfpfftod.o \
+                               sfpfftoi.o sfpfftou.o sfpfitof.o sfpfmul.o \
+                               sfpfneg.o sfpfutof.o
+
+OBJS_DINKUM_SH               = xdnorm.o xdscale.o xdtento.o xdunscal.o \
+                               xfdnorm.o xfdscale.o xfdtento.o xfdunsca.o \
+                               xferaise.o
+
+OBJS_SF_ARM                  = sfpdadd.o sfpddiv.o sfpddtof.o sfpddtoi.o \
+                               sfpddtoll.o sfpddtou.o sfpddtoull.o sfpdfeq.o \
+                               sfpdfge.o sfpdfgt.o sfpdfle.o sfpdflt.o \
+                               sfpdfne.o sfpditod.o sfpdlltod.o sfpdmul.o \
+                               sfpdneg.o sfpdulltod.o sfpdutod.o sfpfadd.o \
+                               sfpfdiv.o sfpffeq.o sfpffge.o sfpffgt.o \
+                               sfpffle.o sfpfflt.o sfpffne.o sfpfftod.o \
+                               sfpfftoi.o sfpfftoll.o sfpfftou.o sfpfftoull.o \
+                               sfpfitof.o sfpflltof.o sfpfmul.o sfpfneg.o \
+                               sfpfulltof.o sfpfutof.o
+
+#EXCLUDE_OBJS_cf              = realfp.o
+
+EXCLUDE_OBJS_PPC403diab      = $(OBJS_SF_PPC)
+EXCLUDE_OBJS_PPC405diab      = $(OBJS_SF_PPC)
+EXCLUDE_OBJS_PPC440diab      = $(OBJS_SF_PPC)
+EXCLUDE_OBJS_PPC860diab      = $(OBJS_SF_PPC)
+EXCLUDE_OBJS_ppc             = savegpr.o restgpr.o savegprl.o restgprl.o savefpr.o restfpr.o hfpddtou.o hfpditod.o hfpdutod.o hfpfftou.o
+
+EXCLUDE_OBJS_SH7600diab      = $(OBJS_SF_SH)
+EXCLUDE_OBJS_SH7700diab      = $(OBJS_SF_SH)
+EXCLUDE_OBJS_SH7700diable    = $(OBJS_SF_SH)
+EXCLUDE_OBJS_SH7750diab      = $(OBJS_DINKUM_SH)
+EXCLUDE_OBJS_SH7750diable    = $(OBJS_DINKUM_SH)
+
+EXCLUDE_OBJS_ARMARCH4diab    = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_ARMARCH4diabbe  = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_ARMARCH5diab    = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_ARMARCH5diabbe  = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_STRONGARMdiab   = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_STRONGARMdiabbe = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_XSCALEdiab      = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_XSCALEdiabbe    = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_arm             = call_via.o
+
+# m16_fglue is only needed for MIPS16 support. We removed
+# it because it contains a reference to __frameinfo_used
+# which should only be referenced by C++ code. Eventually
+# this should be fixed so that a C version of m16_fglue.o
+# is available.
+EXCLUDE_OBJS_mips            = m16_fglue.o
+
+# These are objects that should be pulled from libimpfp into libdiabcplus.a 
+# rather than libdcc.a. We exclude them here, then include them explicitly 
+# in ./libimpfp-c++
+OBJS_LIBIMPFP_CPLUS           = gthrow.o frameinfo.o framedb.o
+
+EXCLUDE_OBJS_COMMON          = pure_virt.o torn_longjmp.o setjmp.o torn_jstb.o link.o swuncom.o swcom.o torn_stubs.o lib_err.o
+
+EXCLUDE_OBJS                 = $(EXCLUDE_OBJS_$(CPU)$(TOOL)) $(EXCLUDE_OBJS_$(TOOLENV)) $(EXCLUDE_OBJS_COMMON) $(OBJS_LIBIMPFP_CPLUS)

@@ -1,0 +1,79 @@
+/* vxidl.idl -- VxCOM IDL definitions */
+
+/* Copyright (c) 2001 Wind River Systems, Inc. */
+
+/*
+modification history
+--------------------
+01b,07aug01,dbs  move MULTI_QI structure to comCoreTypes
+01a,13jul01,dbs  add import of ConnectionPoints, rename to vxidl
+01a,20jul01,nel  created
+*/
+
+cpp_quote("/* vxidl.h -- Copyright (c) Wind River Systems, Inc. 2001 */")
+
+import "comCoreTypes.idl";
+import "comAutomation.idl";
+import "vxStream.idl";
+import "ConnectionPoint.idl";
+
+[
+    local,
+    object,
+    uuid(00000003-0000-0000-C000-000000000046)
+]
+
+interface IMarshal : IUnknown
+    {
+
+    typedef [unique] IMarshal *LPMARSHAL;
+
+    HRESULT GetUnmarshalClass
+	(
+        [in] REFIID riid,
+        [in, unique] void *pv,
+        [in] DWORD dwDestContext,
+        [in, unique] void *pvDestContext,
+        [in] DWORD mshlflags,
+        [out] CLSID *pCid
+	);
+
+    HRESULT GetMarshalSizeMax
+	(
+        [in] REFIID riid,
+        [in, unique] void *pv,
+        [in] DWORD dwDestContext,
+        [in, unique] void *pvDestContext,
+        [in] DWORD mshlflags,
+        [out] DWORD *pSize
+	);
+
+    HRESULT MarshalInterface
+	(
+        [in, unique] IStream *pStm,
+        [in] REFIID riid,
+        [in, unique] void *pv,
+        [in] DWORD dwDestContext,
+        [in, unique] void *pvDestContext,
+        [in] DWORD mshlflags
+	);
+
+    HRESULT UnmarshalInterface
+	(
+        [in, unique] IStream *pStm,
+        [in] REFIID riid,
+        [out] void **ppv
+	);
+
+    HRESULT ReleaseMarshalData
+	(
+        [in, unique] IStream *pStm
+	);
+
+    HRESULT DisconnectObject
+	(
+        [in] DWORD dwReserved
+	);
+    }
+
+

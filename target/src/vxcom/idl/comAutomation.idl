@@ -1,0 +1,192 @@
+/* comAutomation.idl -- VxDCOM Automation definitions */
+
+/* Copyright (c) 1999-2001, Wind River Systems, Inc. */
+
+/*
+modification history
+--------------------
+01e,09aug01,nel  Add table of vaild types for use in a VARIANT.
+01d,02aug01,nel  correct comment for VT_ARRAY.
+01c,17jul01,dbs  fix widl_marshal attributes
+01b,21jun01,dbs  comment out unnecessary redefinition of types
+01a,20jun01,nel  created from comCoreTypes.idl
+*/
+
+import "comCoreTypes.idl";
+
+cpp_quote("/*")
+cpp_quote(" * VARENUM usage key,")
+cpp_quote(" *")
+cpp_quote(" * * [V] - may appear in a VARIANT")
+cpp_quote(" * * [S] - may appear in a Safe Array")
+cpp_quote(" *")
+cpp_quote(" *  VT_EMPTY            [V]     nothing")
+cpp_quote(" *  VT_NULL             [V]     SQL style Null")
+cpp_quote(" *  VT_I2               [V][S]  2 byte signed int")
+cpp_quote(" *  VT_I4               [V][S]  4 byte signed int")
+cpp_quote(" *  VT_R4               [V][S]  4 byte real")
+cpp_quote(" *  VT_R8               [V][S]  8 byte real")
+cpp_quote(" *  VT_CY               [V][S]  currency")
+cpp_quote(" *  VT_DATE             [V][S]  date")
+cpp_quote(" *  VT_BSTR             [V][S]  OLE Automation string")
+cpp_quote(" *  VT_ERROR            [V][S]  SCODE")
+cpp_quote(" *  VT_BOOL             [V][S]  True=-1, False=0")
+cpp_quote(" *  VT_VARIANT             [S]  VARIANT *")
+cpp_quote(" *  VT_UNKNOWN          [V][S]  IUnknown *")
+cpp_quote(" *  VT_UI1              [V][S]  unsigned char")
+
+cpp_quote(" *  VT_ARRAY            [V][S]  SAFEARRAY*")
+cpp_quote(" */")
+
+typedef enum tagVARENUM
+    {
+    VT_EMPTY	= 0,			// nothing
+    VT_NULL	= 1,			// NULL value
+    VT_I2	= 2,			// 2-byte signed int
+    VT_I4	= 3,			// 4-byte signed int
+    VT_R4	= 4,			// 4-byte real
+    VT_R8	= 5,			// 8-byte real
+    VT_CY	= 6,			// currency
+    VT_DATE	= 7,			// date
+    VT_BSTR	= 8,			// BSTR counted-string
+    VT_DISPATCH	= 9,			// IDispatch* - not supported
+    VT_ERROR	= 10,			// SCODE value
+    VT_BOOL	= 11,			// true=-1, false=0
+    VT_VARIANT	= 12,			// VARIANT*
+    VT_UNKNOWN	= 13,			// IUnknown*
+    VT_DECIMAL	= 14,			// decimal - not supported
+    VT_I1	= 16,			// signed char
+    VT_UI1	= 17,			// unsigned char
+    VT_UI2	= 18,			// unsigned short
+    VT_UI4	= 19,			// unsigned long
+    VT_I8	= 20,			// 64-bit signed int
+    VT_UI8	= 21,			// 64-bit unsigned int
+    VT_INT	= 22,			// signed machine int
+    VT_UINT	= 23,			// unsigned machine int
+    VT_VOID	= 24,			// C-like void
+    VT_HRESULT	= 25,			// std COM return type
+    VT_PTR	= 26,			// pointer to some type
+    VT_SAFEARRAY= 27,			// not supported
+    VT_CARRAY	= 28,			// not supported
+    VT_USERDEFINED= 29,			// not supported
+    VT_LPSTR	= 30,			// not supported
+    VT_LPWSTR	= 31,			// not supported
+    VT_FILETIME	= 64,			// not supported
+    VT_BLOB	= 65,			// not supported
+    VT_STREAM	= 66,			// not supported
+    VT_STORAGE	= 67,			// not supported
+    VT_STREAMED_OBJECT	= 68,		// not supported
+    VT_STORED_OBJECT	= 69,		// not supported
+    VT_BLOB_OBJECT	= 70,		// not supported
+    VT_CF	= 71,			// not supported
+    VT_CLSID	= 72,			// not supported
+    VT_VECTOR	= 0x1000,		// not supported
+    VT_ARRAY	= 0x2000,		// SAFEARRAY*
+    VT_BYREF	= 0x4000,		// pointer
+    VT_RESERVED	= 0x8000,
+    VT_ILLEGAL	= 0xffff,
+    VT_ILLEGALMASKED	= 0xfff,
+    VT_TYPEMASK	= 0xfff
+    } VARENUM;
+
+typedef unsigned short VARTYPE;
+
+typedef [widl_marshal(variant)] struct tagVARIANT
+    {
+    VARTYPE vt;
+    WORD wReserved1;
+    WORD wReserved2;
+    WORD wReserved3;
+    union 
+	{
+	LONG		lVal;
+	BYTE		bVal;
+	SHORT		iVal;
+	FLOAT		fltVal;
+	DOUBLE		dblVal;
+	VARIANT_BOOL	boolVal;
+	SCODE		scode;
+	CY		cyVal;
+	DATE		date;
+	BSTR		bstrVal;
+	IUnknown*	punkVal;
+	//IDispatch*	pdispVal;
+	struct tagSAFEARRAY* parray;    // no need to fwd declare
+	BYTE*		pbVal;
+	SHORT*		piVal;
+	LONG*		plVal;
+	FLOAT*		pfltVal;
+	DOUBLE*		pdblVal;
+	VARIANT_BOOL*	pboolVal;
+	SCODE*		pscode;
+	CY*		pcyVal;
+	DATE*		pdate;
+	BSTR*		pbstrVal;
+	IUnknown**	ppunkVal;
+	//IDispatch**	ppdispVal;
+	//SAFEARRAY**	pparray;
+	struct tagVARIANT* pvarVal;     // no need to fwd declare
+	void*		byref;
+	char		cVal;
+	USHORT		uiVal;
+	ULONG		ulVal;
+	INT		intVal;
+	UINT		uintVal;
+	//DECIMAL*	pdecVal;
+	char*		pcVal;
+	USHORT*		puiVal;
+	ULONG*		pulVal;
+	INT*		pintVal;
+	UINT*		puintVal;
+	};
+    } VARIANT;
+
+typedef VARIANT* LPVARIANT;
+
+typedef VARIANT VARIANTARG;
+
+typedef VARIANT* LPVARIANTARG;
+
+/* SafeArray Support */
+
+cpp_quote("#define SF_ERROR VT_ERROR")
+cpp_quote("#define SF_I1 VT_I1")
+cpp_quote("#define SF_I2 VT_I2")
+cpp_quote("#define SF_I4 VT_I4")
+cpp_quote("#define SF_BSTR VT_BSTR")
+cpp_quote("#define SF_UNKNOWN VT_UNKNOWN")
+cpp_quote("#define SF_VARIANT VT_VARIANT")
+
+typedef enum tagFADF_TYPE
+    {
+    FADF_AUTO           = 0x0001,
+    FADF_STATIC         = 0x0002,
+    FADF_EMBEDDED       = 0x0004,
+    FADF_FIXEDSIZE      = 0x0010,
+    FADF_RECORD         = 0x0020,
+    FADF_HAVEIID        = 0x0040,
+    FADF_HAVEVARTYPE    = 0x0080,
+    FADF_BSTR           = 0x0100,
+    FADF_UNKNOWN        = 0x0200,
+    FADF_DISPATCH       = 0x0400,
+    FADF_VARIANT        = 0x0800,
+    FADF_RESERVED       = 0xF008
+    } FADF_TYPE;
+
+typedef struct tagSAFEARRAYBOUND 
+    {
+    ULONG cElements;
+    LONG  lLbound;
+    } SAFEARRAYBOUND;
+
+typedef SAFEARRAYBOUND * LPSAFEARRAYBOUND;
+
+typedef struct tagSAFEARRAY 
+    {
+    USHORT          cDims;
+    USHORT          fFeatures;
+    ULONG           cbElements;
+    ULONG           cLocks;
+    PVOID           pvData;
+    [size_is(cDims)]SAFEARRAYBOUND  rgsabound[];
+    } SAFEARRAY;

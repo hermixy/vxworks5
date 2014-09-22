@@ -1,0 +1,61 @@
+# rules.library.t2 - vxcom rules for making libraries
+#
+# modification history
+# --------------------
+# 02d,08feb02,nel  Remove debug symbols from library build but leave
+#                  optimization turned off just for PENTIUM archs.
+# 02c,10dec01,dbs  diab build
+# 02b,12nov01,nel  Fix repackaging rules.
+# 02a,06nov01,nel  Modify to pick up rules.library.vxWorks.
+# 01z,19oct01,dbs  add extra-cflags capability
+# 01y,17oct01,dbs  improve IDL-build rules to allow for veloce hacks
+# 01x,28sep01,nel  Remove vxdcom_build_host file check.
+# 01w,21sep01,nel  Change rules.vxcom to defs.vxcom.
+# 01v,20sep01,nel  Add target/h/make/rules.vxcom.
+# 01u,11sep01,nel  Add define to use SGI_ALLOCATORS in T2.2.
+# 01t,02aug01,dbs  get vxdcom_build_host from file
+# 01s,24jul01,dbs  remove eh/rtti restrictions on T3/gcc2.9x platform
+# 01r,20jul01,dbs  change WIDL rule to put all headers into target/h
+# 01q,18jul01,dbs  re-instate SGI_ALLOCATORS define for T3
+# 01p,16jul01,dbs  remove SGI_ALLOCATORS define
+# 01o,13jul01,dbs  make this the common make-header
+# 01n,27jun01,dbs  allow WIDL to be over-ridden
+# 01m,24aug00,dbs  add VxDCOM platform version
+# 01l,15oct99,aim  added -mic-compat for i960
+# 01k,17aug99,aim  added REL build flags
+# 01j,15jul99,aim  removed debug compiler flags
+# 01i,02jun99,aim  changed _VXDCOM to _VXWORKS
+# 01h,28may99,aim  fixed RTTI and EXCEPTION selection mechanism
+# 01g,28may99,aim  added vxdcom/<directories> to -Ipath
+# 01f,25may99,aim  added more warning flags
+# 01e,11may99,aim  exported TGT_DIR
+# 01d,04may99,aim  added VXDCOM_CFLAGS
+# 01c,30apr99,aim  added MANIFEST rule
+# 01b,29apr99,aim  added -Wall
+# 01a,28apr99,aim  written
+
+ifeq ($(LIB_BASE_NAME),)
+export LIB_BASE_NAME	     = vxcom
+endif
+
+ifeq ($(LIB_COMMON),)
+export LIB_COMMON	     = false
+endif
+
+include $(WIND_BASE)/target/h/make/defs.vxcom
+include $(VXCOM_BASE)/h/make/rules.library.common
+include $(VXCOM_BASE)/h/make/rules.library.vxWorks
+
+VXDCOM_PLATFORM         = 5
+
+VXDCOM_EXTRA_GCC_FLAGS  = $(VXDCOM_NO_RTTI) $(VXDCOM_NO_EXCEPTIONS) \
+                          -D__STL_USE_SGI_ALLOCATORS
+
+# Temp fix for gnu compiler under veloce
+ifeq ($(TOOL),gnu)
+ifeq ($(VX_CPU_FAMILY),pentium)
+override CC_OPTIM = -O0 -nostdlib -fno-builtin -fno-defer-pop
+endif
+endif
+
+VXDCOM_EXTRA_DCC_FLAGS  =

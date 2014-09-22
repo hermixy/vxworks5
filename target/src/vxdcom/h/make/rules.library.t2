@@ -1,0 +1,25 @@
+# rules.library.t2 - vxdcom rules for making T3 libraries
+#
+# modification history
+# --------------------
+# 01k,12nov01,nel  Fix repackaging rules.
+# 01j,06nov01,nel  Add repackaging stuff.
+# 01i,17oct01,dbs  improve build rules to allow for veloce hacks
+# 01h,28sep01,nel  Remove vxdcom_build_host file check.
+# 01g,21sep01,nel  Change rules.vxcom to defs.vxcom.
+# 01f,20sep01,nel  Add target/h/make/rules.vxcom.
+# 01e,11sep01,nel  Add define to use SGI_ALLOCATORS in T2.2
+# 01d,02aug01,dbs  use build-host file
+# 01c,19jul01,dbs  add h dir to include path
+# 01b,16jul01,dbs  fix up name of root dir
+# 01a,13jul01,dbs  written
+#
+
+LIB_BASE_NAME       = vxdcom
+LIB_COMMON          = false
+
+include $(VXCOM_BASE)/h/make/rules.library.t2
+
+DCOM_INCLUDE_DIRS            = h idl dcom rpc reactor
+
+override EXTRA_INCLUDE       += $(patsubst %,-I$(VXDCOM_BASE)/%,$(DCOM_INCLUDE_DIRS))

@@ -1,0 +1,12 @@
+# rules.library - vxdcom rules for making T3 libraries
+#
+# modification history
+# --------------------
+# 01b,19oct01,dbs  improve build rules to allow for veloce hacks
+# 01a,13jul01,dbs  written
+#
+
+EXTRA_INCLUDE   = $(patsubst %,-I$(VXDCOM_BASE)/%,$(INC_DIRS))
+
+include $(WIND_BASE)/target/src/vxcom/h/make/rules.library.$(VXDCOM_BUILD_HOST)
+

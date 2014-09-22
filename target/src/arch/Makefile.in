@@ -1,0 +1,58 @@
+# Makefile - makefile for target/src/arch, makefile for selecting
+#	     architecture-specific portions of runtime
+#
+# Copyright 1996-2001 Wind River Systems, Inc.
+#
+# This Makefile is now generated -- DO NOT EDIT
+#
+# To change the boilerplate, edit Makefile.in
+#
+# To add CPU types or otherwise change the substance,
+# edit $WIND_BASE/host/src/target/architecturedb
+#
+# modification history
+# --------------------
+# 01i,21aug01,pch  Rename to Makefile.in, revise for use in generating
+#		   Makefile from host/src/target/architecturedb
+# 01h,24jul01,scm  change XScale name to conform to coding standard...
+# 01g,16aug01,hdn  added PENTIUM2/3/4 support.
+# 01f,26apr00,lc   added MAPCA support.
+# 01e,17may99,mbh  added MAP1000 support.
+# 01m,04may01,scm  add STRONGARM support...
+# 01f,27oct00,s_m  rename PPC405 cpu types
+# 01e,07sep00,sm   added subdirs for PPC405GP and PPC405GF
+# 01l,11dec00,scm  replace references to ARMSA2 to XScale
+# 01k,31aug00,scm  add sa2 support to makefile
+# 01j,20jan99,cdp  removed support for old ARM libraries.
+# 01i,13nov98,cdp  added ARMARCH3, ARMARCH4, ARMARCH4_T support.
+# 01i,03mar00,zl   merged SH support into T2
+# 01e,19dec00,pes  Adapt to MIPS32/MIPS64 CPU architectures
+# 01d,20aug98,tpr  added PowerPC EC 603 support.
+# 01h,09apr98,hdn  added PENTIUM support.
+# 01g,06jan98,cym  added simnt support cleaned up modhist.
+# 01f,26mar97,cdp  added ARM7TDMI_T support.
+# 01e,16dec96,kkk  added R4650 support.
+# 01d,12dec96,cdp  added ARM support.
+# 01c,26nov96,dvs  added support for SIMSPARCSOLARIS
+#             +pr
+# 01b,04nov96,p_m  added PPC860
+# 01a,17jun96,yp   written
+#
+# DESCRIPTION
+# This file contains the makefile rules to launch builds in the subdirectories
+# that are architecture specific. Given the CPU figure out the SUBDIR to build
+#
+#*/
+
+LIBNAME=lib$(CPU)$(TOOL)vx.a
+LIBDIRNAME=obj$(CPU)$(TOOL)vx
+
+TGT_DIR=$(WIND_BASE)/target
+
+@@@@@@ this line of Makefile.in gets replaced by generated content @@@@@@
+
+SUBDIRS_DOC=doc
+
+SUBDIRS=$(SUBDIRS_$(CPU)) $(SUBDIRS_DOC)
+
+include $(TGT_DIR)/h/make/rules.library

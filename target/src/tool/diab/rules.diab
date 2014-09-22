@@ -1,0 +1,18 @@
+# rules.diab - rules for extracting objects from Diab libraries
+#
+# modification history
+# --------------------
+# 01c,13nov01,sn   include make.$(CPU)$(TOOL)
+# 01b,06nov01,sn   define OBJ_PREFIX
+# 01a,15oct01,sn   wrote
+#
+# DESCRIPTION
+# Generic rules for extracting objects from Diab libraries.
+
+include $(TGT_DIR)/h/tool/diab/make.$(CPU)$(TOOL)
+
+TOOL_LIB	:= $(shell dplus $(TGT_FLAG) -\#\# dummy.o | wtxtcl $(TGT_DIR)/src/tool/diab/diabLibFind.tcl $(DIABLIBRARY))
+
+OBJ_PREFIX      = _x_diab_
+
+include $(TGT_DIR)/src/tool/rules.tool

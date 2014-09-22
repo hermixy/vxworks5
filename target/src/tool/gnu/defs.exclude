@@ -1,0 +1,97 @@
+# defs.exclude - what not to extract from the toolchain libraries
+#
+# modification history
+# --------------------
+# 01m,20may02,sn   exclude _varargs.o (not used)
+# 01l,05feb02,sn   exclude chkstk.o for SIMPC (alloca already provided by simLib.o)
+# 01k,16jan02,to   exclude sf for ARM (except Thumb mode)
+# 01j,15jan02,sn   Exclude ctors related code (VxWorks use munch instead 
+#                  for the moment)
+# 01i,10jan02,s_l  Exclude  rule to build ffs for 68k
+# 01h,13dec01,mrs  Fix sh kernel build.
+# 01g,13dec01,mrs  Fix arm build.
+# 01f,10dec01,sn   exclude sf for PPC440
+# 01e,05dec01,sn   exclude eabi-ctors.o
+# 01d,04dec01,to   exclude _call_via_rX.o module, use ../common/arm_call_via.s
+# 01c,03dec01,sn   save/restore functions now defined in ../common/saverest.s
+# 01b,14nov01,sn   cleaned up
+# 01a,13nov01,sn   wrote
+#
+# DESCRIPTION
+# This file contains the knowledge of which object files should
+# not be pulled out of the toolchain libraries (because 
+# they define symbols that are already provided by VxWorks).
+
+include $(TGT_DIR)/src/tool/gnu/libg++/defs.g++
+
+# Put objects that should always be excluded in
+# EXCLUDE_OBJS_COMMON
+#
+# Put objects that should be excluded for a particular arch family in
+# EXCLUDE_OBJS_$(TOOLENV)
+#
+# Put objects that should be excluded for a particular CPU in
+# EXCLUDE_OBJS_$(CPU)$(TOOL)
+
+OBJS_FIX	          = _fixunsdfsi.o _fixunssfsi.o
+OBJS_FLOAT	          = _double.o _eqdf2.o _eqsf2.o _float.o _gedf2.o \
+                            _gesf2.o _gtdf2.o _gtsf2.o _ledf2.o _lesf2.o \
+                            _ltdf2.o _ltsf2.o _nedf2.o _nesf2.o fpgnulib.o
+OBJS_SOFT_FLOAT           = dp-bit.o fp-bit.o
+OBJS_SOFT_FLOAT_SH        = _addsub_df.o _addsub_sf.o _df_to_sf.o _df_to_si.o \
+                            _div_df.o _div_sf.o _eq_df.o _eq_sf.o _ge_df.o \
+                            _ge_sf.o _gt_df.o _gt_sf.o _le_df.o _le_sf.o \
+                            _lt_df.o _lt_sf.o _mul_df.o _mul_sf.o _ne_df.o \
+                            _ne_sf.o _negate_df.o _negate_sf.o _sf_to_df.o \
+                            _sf_to_si.o _si_to_df.o _si_to_sf.o
+OBJS_INT	          = _divsi3.o _modsi3.o _mulsi3.o  _udivsi3.o _umodsi3.o
+
+OBJS_SF_PPC               = $(OBJS_FIX) $(OBJS_SOFT_FLOAT)
+OBJS_SF_SH                = $(OBJS_FIX) $(OBJS_SOFT_FLOAT_SH)
+OBJS_SF_ARM               = _addsub_sf.o _compare_sf.o _div_sf.o \
+                            _dp_addsub_df.o _dp_compare_df.o _dp_df_to_sf.o \
+                            _dp_df_to_si.o _dp_div_df.o _dp_eq_df.o \
+                            _dp_ge_df.o _dp_gt_df.o _dp_le_df.o _dp_lt_df.o \
+                            _dp_mul_df.o _dp_ne_df.o _dp_negate_df.o \
+                            _dp_si_to_df.o _eq_sf.o _fixdfdi.o _fixsfdi.o \
+                            _fixunsdfdi.o _fixunsdfsi.o _fixunssfdi.o \
+                            _fixunssfsi.o _floatdidf.o _floatdisf.o _ge_sf.o \
+                            _gt_sf.o _le_sf.o _lt_sf.o _mul_sf.o _ne_sf.o \
+                            _negate_sf.o _sf_to_df.o _sf_to_si.o _si_to_sf.o
+
+EXCLUDE_OBJS_CPU32gnu 	  = $(OBJS_FLOAT)
+EXCLUDE_OBJS_MC68000gnu   = $(OBJS_INT) $(OBJS_FLOAT)
+EXCLUDE_OBJS_MC68010gnu   = $(OBJS_INT) $(OBJS_FLOAT)
+EXCLUDE_OBJS_MC68020gnu   = $(OBJS_FLOAT)
+EXCLUDE_OBJS_MC68LC040gnu = $(OBJS_FLOAT)
+EXCLUDE_OBJS_68k          = $(OBJS_FIX) _ffsdi2.o
+
+EXCLUDE_OBJS_PPC403gnu 	  = $(OBJS_SF_PPC)
+EXCLUDE_OBJS_PPC405gnu    = $(OBJS_SF_PPC)
+EXCLUDE_OBJS_PPC440gnu    = $(OBJS_SF_PPC)
+EXCLUDE_OBJS_PPC860gnu    = $(OBJS_SF_PPC)
+EXCLUDE_OBJS_ppc          = eabi.o eabi-ctors.o
+
+EXCLUDE_OBJS_SH7600gnu    = $(OBJS_SF_SH)
+EXCLUDE_OBJS_SH7700gnu    = $(OBJS_SF_SH)
+EXCLUDE_OBJS_SH7700gnule  = $(OBJS_SF_SH)
+EXCLUDE_OBJS_sh           = _ffsdi2.o
+
+EXCLUDE_OBJS_ARMARCH4gnu    = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_ARMARCH4gnube  = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_ARMARCH5gnu    = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_ARMARCH5gnube  = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_STRONGARMgnu   = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_STRONGARMgnube = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_XSCALEgnu      = $(OBJS_SF_ARM)
+EXCLUDE_OBJS_XSCALEgnube    = $(OBJS_SF_ARM)
+# arm compiler doesn't implement ffs as a builtin, and the arm kernel
+# doesn't have ffs, so we have to exclude _ffsdi2.o as otherwise the
+# kernel would pull it in and fail to link.
+EXCLUDE_OBJS_arm          = _call_via_rX.o _ffsdi2.o
+
+EXCLUDE_OBJS_simpc        = _chkstk.o
+
+EXCLUDE_OBJS_COMMON       = _exit.o _pure.o __main.o _ctors.o _varargs.o $(OBJS_CPLUS)
+
+EXCLUDE_OBJS              = $(EXCLUDE_OBJS_$(CPU)$(TOOL)) $(EXCLUDE_OBJS_$(TOOLENV)) $(EXCLUDE_OBJS_COMMON)

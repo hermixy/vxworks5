@@ -1,0 +1,48 @@
+/* RemoteActivation.idl - DCOM protocol */
+
+/* Copyright (c) 2000, Wind River Systems, Inc. */
+
+/*
+modification history
+--------------------
+01a,18feb00,dbs  created
+*/
+
+cpp_quote("/* Copyright (c) 2000 Wind River Systems, Inc. */")
+
+import "orpc.idl";
+
+[
+    uuid(4d9f4ab8-7d1c-11cf-861e-0020af6e7c57),
+    pointer_default(unique)
+]
+interface IRemoteActivation
+    {
+
+    cpp_quote ("#define MODE_GET_CLASS_OBJECT 0xffffffff")
+
+    HRESULT RemoteActivation
+	(
+	[in] ORPCTHIS*				pORPCthis,
+	[out] ORPCTHAT*				pORPCthat,
+	[in] GUID *				pClsid,
+	[in, string, unique] WCHAR*		pwszObjectName,
+	[in, unique] MInterfacePointer*		pObjectStorage,
+	[in] DWORD				clientImpLevel,
+	[in] DWORD				mode,
+	[in] DWORD				nItfs,
+	[in,unique,size_is(nItfs)] IID*		pIIDs,
+	[in] unsigned short  			cReqProtseqs,
+	[in, size_is(cReqProtseqs)] USHORT	reqProtseqs[],
+	[out] OXID*				pOxid,
+	[out] DUALSTRINGARRAY**			ppdsaOxidBindings,
+	[out] IPID*				pipidRemUnknown,
+	[out] DWORD*				pAuthnHint,
+	[out] COMVERSION*			pServerVersion,
+	[out] HRESULT*				phr,
+	[out,size_is(nItfs)] MInterfacePointer* ppInterfaceData[],
+	[out,size_is(nItfs)] HRESULT*		pResults
+	);
+
+    }
+

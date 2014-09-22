@@ -1,0 +1,128 @@
+# rules.library.vxWorks - vxcom rules for making libraries
+#
+# modification history
+# --------------------
+# 01c,18dec01,dbs  fix diab detection
+# 01b,10dec01,dbs  diab build
+# 01a,06nov01,nel  created from rules.library.t3
+
+export TRACE_CALL_FILENAME   = 
+export TGT_DIR               = $(WIND_BASE)/target
+#export VXCOM_BASE            = $(WIND_BASE)/target/src/vxcom
+# above line was already defined in target/h/make/defs.vxcom,
+# possibly with a different value for win32 builds
+export INCLUDE_DIRS          = h com debug comcore os idl
+export CLEARTOOL             = cleartool
+export EXTRA_CLEAN           = *.o *.i TAGS MANIFEST _ctdt* *.out core
+export EXTRA_INCLUDE         = $(patsubst %,-I$(VXCOM_BASE)/%,$(INCLUDE_DIRS))
+
+C_SRCS                       = $(wildcard *.c)
+CPP_SRCS                     = $(wildcard *.cpp)
+
+export SRCS                  = $(C_SRCS) $(CPP_SRCS)
+
+export HDRS                  = $(wildcard *.h)
+export OBJS                  = $(patsubst %.c,%.o,$(C_SRCS)) \
+				$(patsubst %.cpp,%.o,$(CPP_SRCS))
+export J                     = 1
+
+export VXDCOM_NO_RTTI        = -fno-rtti
+export VXDCOM_NO_EXCEPTIONS  = -fno-exceptions
+
+# Must define VXDCOM_CFLAGS for each compiler/tool variant
+# These should use at least VXCOM_EXTRA_CFLAGS as that is
+# defined in the per-project defs.vxcom file...
+
+ifeq ($(findstring diab,$(TOOL)),diab)
+export VXDCOM_CFLAGS         = $(REL)				\
+                               $(VXDCOM_EXTRA_DCC_FLAGS)        \
+                               $(VXCOM_EXTRA_CFLAGS)            \
+                               -DVXDCOM_PLATFORM_VXWORKS=$(VXDCOM_PLATFORM)
+endif
+
+ifeq ($(findstring gnu,$(TOOL)),gnu)
+export C++_TEMPLATE_INST    = -fimplicit-templates
+export VXDCOM_CFLAGS         = $(REL)				\
+                               -Wall				\
+                               -Wstrict-prototypes		\
+                               $(VXDCOM_EXTRA_GCC_FLAGS)        \
+                               $(VXCOM_EXTRA_CFLAGS)            \
+                               $(C++_TEMPLATE_INST)             \
+                               -DVXDCOM_PLATFORM_VXWORKS=$(VXDCOM_PLATFORM)
+endif
+
+ifneq ($(VXDCOM_DEBUG),)
+override EXTRA_DEFINE      += -DINCLUDE_VXDCOM_SYSLOG		\
+                              -DINCLUDE_VXDCOM_TRACE_CALL
+endif
+
+ifneq ($(TRACE_CALL_FILENAME),)
+override EXTRA_DEFINE      += -DTRACE_CALL_FILENAME=\"$(TRACE_CALL_FILENAME)\"
+endif
+
+include $(TGT_DIR)/h/make/rules.library
+
+# override default C++ template instantiation
+
+
+override EXTRA_DEFINE      += $(VXDCOM_CFLAGS)
+
+# pattern specific rules
+
+%.i : %.cpp
+	$(COMPILE.c) -E $< -o $@
+
+%.s : %.cpp
+	$(COMPILE.c) -S $< -o $@
+
+%.out : $(LIBOBJS)
+	$(NM) $(LIBOBJS) | $(MUNCH) > _ctdt.c
+	$(CC) -fdollars-in-identifiers -c _ctdt.c -o _ctdt.o
+	$(LD) -r _ctdt.o $(LIBOBJS) -o $@
+
+# recursive TAGS rule
+TAGS:	MANIFEST
+ifneq ($(SUBDIRS),)
+	$(MAKE) CPU=$(CPU) TOOL=$(TOOL) TGT_DIR=$(TGT_DIR) \
+		TARGET=TAGS $(SUBDIRS)
+endif
+	etags `cat MANIFEST`
+
+# recursive realclean rule
+realclean:
+ifneq ($(SUBDIRS),)
+	$(MAKE) CPU=$(CPU) TOOL=$(TOOL) TGT_DIR=$(TGT_DIR) \
+		TARGET=realclean $(SUBDIRS)
+endif
+	$(MAKE) CPU=$(CPU) TOOL=$(TOOL) TGT_DIR=$(TGT_DIR) clean
+	$(RM) *.[is] TAGS MANIFEST core _ctdt* *.o *.out
+
+# recursive objects rule
+objects:
+ifneq ($(SUBDIRS),)
+	$(MAKE) CPU=$(CPU) TOOL=$(TOOL) TGT_DIR=$(TGT_DIR) \
+		TARGET=objects $(SUBDIRS)
+endif
+	$(MAKE) -j$(J) CPU=$(CPU) TOOL=$(TOOL) TGT_DIR=$(TGT_DIR) objs
+
+# recursive distributed objects rule
+dobjects:
+ifneq ($(SUBDIRS),)
+	$(MAKE) CPU=$(CPU) TOOL=$(TOOL) TGT_DIR=$(TGT_DIR) \
+		TARGET=dobjects $(SUBDIRS)
+endif
+	CLEARCASE_MAKE_COMPAT=gnu CCASE_HOST_TYPE=ultra1 clearmake -J $(J) \
+		TOOL=$(TOOL) CPU=$(CPU) $(OBJS)
+
+# recursive cleantags rule
+cleantags:
+ifneq ($(SUBDIRS),)
+	$(MAKE) CPU=$(CPU) TOOL=$(TOOL) TGT_DIR=$(TGT_DIR) \
+		TARGET=cleantags $(SUBDIRS)
+endif
+	$(RM) TAGS
+
+MANIFEST:
+	@$(RM) $@
+	@$(CLEARTOOL) find .  -type f -cview -print \
+		| sed -e s/..// -e 's/@@.*//' > $@

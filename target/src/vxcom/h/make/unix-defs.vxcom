@@ -1,0 +1,16 @@
+VXDCOM_BUILD_HOST = unix
+
+VXCOM_BASE = $(WIND_BASE)/target/src/vxcom
+VXDCOM_BASE = $(WIND_BASE)/target/src/vxdcom
+
+VXCOM_PUBLIC_H_DIR = $(VXCOM_BASE)/unixh
+VXCOM_PRIVATE_H_DIR = $(VXCOM_BASE)/unixh
+VXCOM_PS_DIR = $(WIND_BASE)/target/src/vxdcom/idl
+VXCOM_GUID_DIR = $(WIND_BASE)/target/src/vxcom/idl
+
+VXDCOM_PUBLIC_H_DIR = $(VXDCOM_BASE)/unixh
+VXDCOM_PRIVATE_H_DIR = $(VXDCOM_BASE)/unixh
+VXDCOM_PS_DIR = $(WIND_BASE)/target/src/vxdcom/idl
+VXDCOM_GUID_DIR = $(WIND_BASE)/target/src/vxdcom/idl
+
+

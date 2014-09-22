@@ -1,0 +1,53 @@
+# rules.library.common - vxcom/vxdcom build rules for all targets
+#
+# modification history
+# --------------------
+# 01a,17oct,dbs  written
+#
+# NOTES:- this rules file requires the setting of a number of Make
+# variables either on the command line or via some target-specific
+# 'defs' file.
+#
+# Those variables are as follows:-
+#
+# VXDCOM_BUILD_HOST : either t2, t3 or unix
+#
+# Plus, for each of VXCOM and VXDCOM:-
+#
+# VX?COM_BASE : root of Vx[D]COM tree
+# VX?COM_PUBLIC_H_DIR : where to put public IDL-derived headers
+# VX?COM_PRIVATE_H_DIR : where to put private IDL-derived headers
+# VX?COM_PS_DIR : where to put IDL-derived proxy/stub *_ps.cpp files
+# VX?COM_GUID_DIR : where to put IDL-derived GUID *_i.c files
+#
+
+# implicit rules for IDL compilation
+
+$(VXDCOM_PUBLIC_H_DIR)/%.h : %.idl
+	widl -h $(VXDCOM_PUBLIC_H_DIR) -nops -noi $<
+
+$(VXCOM_PUBLIC_H_DIR)/%.h : %.idl
+	widl -h $(VXCOM_PUBLIC_H_DIR) -nops -noi $<
+
+$(VXDCOM_PRIVATE_H_DIR)/%.h : %.idl
+	widl -h $(VXDCOM_PUBLIC_H_DIR) -nops -noi $<
+
+$(VXCOM_PRIVATE_H_DIR)/%.h : %.idl
+	widl -h $(VXCOM_PUBLIC_H_DIR) -nops -noi $<
+
+$(VXDCOM_PS_DIR)/%_ps.cpp : %.idl
+	widl -ps $(VXDCOM_PS_DIR) -noh -noi $<
+
+$(VXCOM_PS_DIR)/%_ps.cpp : %.idl
+	widl -ps $(VXCOM_PS_DIR) -noh -noi $<
+
+$(VXDCOM_GUID_DIR)/%_i.c : %.idl
+	widl -i $(VXDCOM_GUID_DIR) -nops -noh $<
+
+$(VXCOM_GUID_DIR)/%_i.c : %.idl
+	widl -i $(VXCOM_GUID_DIR) -nops -noh $<
+
+
+
+
+

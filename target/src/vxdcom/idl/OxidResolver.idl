@@ -1,0 +1,92 @@
+/* OxidResolver.idl - DCOM protocol */
+
+/* Copyright (c) 2000, Wind River Systems, Inc. */
+
+/*
+modification history
+--------------------
+01b,10aug00,nel  Win2K Fix.
+01a,18feb00,dbs  created
+*/
+
+cpp_quote("/* Copyright (c) 2000 Wind River Systems, Inc. */")
+
+import "orpc.idl";
+
+[
+    uuid(99fcfec4-5260-101b-bbcb-00aa0021347a),
+    pointer_default(unique)
+]
+interface IOXIDResolver
+{
+    // Method to get the protocol sequences, string bindings
+    // and machine id for an object server given its OXID.
+    [idempotent] HRESULT ResolveOxid
+	(
+	[in]       OXID           *pOxid,
+	[in]       unsigned short  cRequestedProtseqs,
+	[in,  ref, size_is(cRequestedProtseqs)]
+	unsigned short		   arRequestedProtseqs[],
+	[out, ref] DUALSTRINGARRAY **ppdsaOxidBindings,
+	[out, ref] IPID            *pipidRemUnknown,
+	[out, ref] DWORD           *pAuthnHint
+	);
+
+    // Simple ping is used to ping a Set. Client machines use this
+    // to inform the object exporter that it is still using the
+    // members of the set.
+    // Returns S_TRUE if the SetId is known by the object exporter,
+    // S_FALSE if not.
+    [idempotent] HRESULT SimplePing
+	(
+	[in]  SETID    *pSetId  // Must not be zero
+	);
+
+    // Complex ping is used to create sets of OIDs to ping. The
+    // whole set can subsequently be pinged using SimplePing,
+    // thus reducing network traffic.
+    [idempotent] HRESULT ComplexPing
+	(
+	[in, out]  SETID          *pSetId,  // In of 0 on first call for new set.
+	[in]       unsigned short  SequenceNum,
+	[in]       unsigned short  cAddToSet,
+	[in]       unsigned short  cDelFromSet,
+	[in, unique, size_is(cAddToSet)]
+	OID			   AddToSet[], // add these OIDs to the set
+	[in, unique, size_is(cDelFromSet)]
+	OID			   DelFromSet[], // remove these OIDs from the set
+	[out]      unsigned short *pPingBackoffFactor // 2^factor = multipler
+	);
+
+    // In some cases the client maybe unsure that a particular
+    // binding will reach the server.  (For example, when the oxid
+    // bindings have more then one TCP/IP binding)  This call
+    // can be used to validate the binding
+    // from the client.
+    [idempotent] HRESULT ServerAlive ();
+
+    // Method to get the protocol sequences, string bindings,
+    // RemoteUnknown IPID and COM version for an object server given
+    // its OXID. Supported by DCOM version 5.2 and above.
+
+    [idempotent] HRESULT ResolveOxid2
+	(
+	[in]       OXID           *pOxid,
+	[in]       unsigned short  cRequestedProtseqs,
+	[in, ref, size_is(cRequestedProtseqs)]
+	unsigned short		   arRequestedProtseqs[],
+	[out, ref] DUALSTRINGARRAY **ppdsaOxidBindings,
+	[out, ref] IPID            *pipidRemUnknown,
+	[out, ref] DWORD           *pAuthnHint,
+	[out, ref] COMVERSION      *pComVersion
+	);
+}
+
+[
+    uuid(000001a0-0000-0000-C000-000000000046),
+    pointer_default(unique)
+]
+interface ISystemActivator
+{
+    [idempotent] HRESULT ADummyMethod ();
+}

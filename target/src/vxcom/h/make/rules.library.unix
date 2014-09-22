@@ -1,0 +1,99 @@
+# rules.library.unix - build rules for VxCOM/DCOM as Unix shared libs
+#
+# modification history
+# --------------------
+# 01h,19oct01,dbs  fix typo in clean rule
+# 01g,19oct01,dbs  fix lib build, clean rule
+# 01f,17oct01,dbs  improve IDL-build rules to allow for veloce hacks
+# 01e,03oct01,dbs  adding filesystem unix registry requires -ldl
+# 01d,31jul01,dbs  add -fPIC flag for shared-lib build
+# 01c,24jul01,dbs  fix shared-lib build on solaris
+# 01b,24jul01,dbs  add IDL compilation pass
+# 01a,16jul01,dbs  written
+#
+# DESCRIPTION: the unix build takes place in the top-level directory,
+# without recursing into the subdirs. 
+#
+
+include $(VXCOM_BASE)/h/make/rules.library.common
+
+INCLUDES        = $(patsubst %,-I$(BASE_DIR)/%,$(INC_DIRS))
+
+LDXX            = $(CXX)
+
+HOST_LIB_DIR    = $(WIND_BASE)/host/$(WIND_HOST_TYPE)/lib
+OBJDIR          = $(BASE_DIR)/$(WIND_HOST_TYPE)
+TGT_DIR         = $(WIND_BASE)/target
+
+COMMON_CFLAGS   = -g -fPIC -D_REENTRANT -DINCLUDE_VXDCOM_SYSLOG $(INCLUDES) $(EXTRA_INCLUDES)
+
+ifeq ($(WIND_HOST_TYPE),sun4-solaris2)
+HOST		= sun4-solaris2
+CFLAGS		= -DSUN4_SOLARIS2 -DVXDCOM_PLATFORM_SOLARIS $(COMMON_CFLAGS) \
+                  -DCOM_VTBL_FORMAT=COM_VTBL_FORMAT_GCC2_OFFSET \
+                  -D_BYTE_ORDER=-1
+LIBS            = -lpthread -lposix4 -lsocket -lnsl -ldl
+SHARED_LDXX     = $(CXX) -G
+else
+HOST		= x86-linux2
+CFLAGS		= -DLINUX -DVXDCOM_PLATFORM_LINUX $(COMMON_CFLAGS) \
+                  -DCOM_VTBL_FORMAT=COM_VTBL_FORMAT_GCC2_THUNKS
+LIBS            = -lpthread -ldl
+SHARED_LDXX     = $(CXX) -shared
+endif
+
+CXXFLAGS        = $(CFLAGS)
+
+C_SRCS          = $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
+CPP_SRCS        = $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.cpp))
+
+C_OBJS          = $(notdir $(patsubst %.c,%.o,$(C_SRCS)))
+CPP_OBJS        = $(notdir $(patsubst %.cpp,%.o,$(CPP_SRCS)))
+
+OBJS            = $(addprefix $(OBJDIR)/,$(C_OBJS) $(CPP_OBJS))
+
+VPATH           = $(SRC_DIRS)
+
+UNIXH           = $(BASE_DIR)/unixh
+
+# implicit rules
+%/.d:
+	mkdir -p $@
+
+$(OBJDIR)/%.o : %.c
+	$(COMPILE.c) $< -o $@
+
+$(OBJDIR)/%.o : %.cpp
+	$(COMPILE.cc) $< -o $@
+
+#
+# The default rule builds the shared library, but only after building
+# the IDL (via the 'firstpass' rule).
+#
+
+Default: objdir firstpass
+	$(MAKE) lib
+
+.PHONY: objdir
+objdir: $(OBJDIR)/.d
+
+firstpass: $(UNIXH)/.d
+	$(MAKE) -C idl idlcomp
+
+lib: $(LIB)
+
+clean:
+	$(RM) -rf $(OBJDIR) $(UNIXH) $(LIB) $(LOCAL_CLEAN) idl/*_i.c idl/*_ps.cpp
+
+$(LIB) : $(OBJS)
+	$(SHARED_LDXX) -g -o $@ $(OBJS) $(LIBS)
+
+.PHONY: verify
+verify:
+	@echo SRC_DIRS=$(SRC_DIRS)
+	@echo SUBDIRS=$(SUBDIRS)
+	@echo C_SRCS=$(C_SRCS)
+	@echo CPP_SRCS=$(CPP_SRCS)
+	@echo C_OBJS=$(C_OBJS)
+	@echo CPP_OBJS=$(CPP_OBJS)
+	@echo OBJS=$(OBJS)

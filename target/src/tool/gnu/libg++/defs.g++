@@ -1,0 +1,36 @@
+# defs.g++
+#
+# modification history
+# --------------------
+# 01d,21may02,sn   Rename OBJS_$(TOOLENV) to OBJS_CPLUS_$(TOOLENV) to avoid clash
+#                  with ../../common/Makefile
+# 01c,20may02,sn   Add arch specific OBJS lists
+# 01b,04dec01,s_l  Remove mips from the list of arches using  frame.o
+# 01a,24oct01,sn   wrote
+#
+# DESCRIPTION
+# This file contains the definitions used by libgcc/Makefile and libg++/Makefile
+
+OBJS_CPLUS_BASIC = __dummy.o _eh.o exception.o new.o opdel.o \
+		   opdelnt.o opvdel.o opvdelnt.o opnew.o opnewnt.o \
+		   opvnew.o opvnewnt.o tinfo.o tinfo2.o
+
+# frame.o is part of the C++ exception handling system on some targets
+
+# tramp.o is not really C++; it's needed for nested function support.
+# We don't include it along with the C intrinsics for scalability;
+# tramp.o references 'abort', which pulls in the signal library.
+
+# xp-bit.o just contains dummy definitions of long double support
+# routines needed by libio/libstdc++; the dummy definitions just
+# call 'abort'.
+
+OBJS_CPLUS_68k 		= frame.o
+OBJS_CPLUS_ppc		= frame.o tramp.o
+OBJS_CPLUS_pentium 	= frame.o xp-bit.o
+OBJS_CPLUS_sparc 	= frame.o
+OBJS_CPLUS_mips 	= frame-dwarf2.o
+OBJS_CPLUS_simpc 	= frame.o
+OBJS_CPLUS_simso 	= frame.o
+
+OBJS_CPLUS 	= $(OBJS_CPLUS_BASIC) $(OBJS_CPLUS_$(TOOLENV))

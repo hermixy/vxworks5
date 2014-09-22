@@ -1,0 +1,159 @@
+/* ConnectionPoint.idl - definition of connection-point interfaces */
+
+/* Copyright (c) 2000, Wind River Systems, Inc. */
+
+/*
+modification history
+--------------------
+01b,13jul01,dbs  fix imports for vxcom
+01a,10feb00,dbs  created from vxidl.idl
+*/
+
+import "comCoreTypes.idl";
+
+interface IConnectionPointContainer;
+interface IConnectionPoint;
+interface IEnumConnections;
+interface IEnumConnectionPoints;
+
+[
+    object,
+    uuid(B196B286-BAB4-101A-B69C-00AA00341D07),
+    pointer_default(unique)
+]
+interface IConnectionPoint : IUnknown
+    {
+    typedef IConnectionPoint * PCONNECTIONPOINT;
+    typedef IConnectionPoint * LPCONNECTIONPOINT;
+
+    HRESULT GetConnectionInterface
+	(
+        [out]           IID * piid
+	);
+
+    HRESULT GetConnectionPointContainer
+	(
+        [out]           IConnectionPointContainer ** ppCPC
+	);
+
+    HRESULT Advise
+	(
+        [in]    IUnknown * pUnkSink,
+        [out]   DWORD *    pdwCookie
+	);
+
+    HRESULT Unadvise
+	(
+        [in]    DWORD dwCookie
+	);
+
+    HRESULT EnumConnections
+	(
+        [out]   IEnumConnections ** ppEnum
+	);
+    }
+
+[
+    object,
+    uuid(B196B284-BAB4-101A-B69C-00AA00341D07),
+    pointer_default(unique)
+]
+interface IConnectionPointContainer : IUnknown
+    {
+    typedef IConnectionPointContainer * PCONNECTIONPOINTCONTAINER;
+    typedef IConnectionPointContainer * LPCONNECTIONPOINTCONTAINER;
+
+    HRESULT EnumConnectionPoints
+	(
+        [out]   IEnumConnectionPoints ** ppEnum
+	);
+
+    HRESULT FindConnectionPoint
+	(
+        [in]    REFIID riid,
+        [out]   IConnectionPoint ** ppCP
+	);
+    }
+
+
+[
+    object,
+    uuid(B196B287-BAB4-101A-B69C-00AA00341D07),
+    pointer_default(unique)
+]
+interface IEnumConnections : IUnknown
+    {
+    typedef IEnumConnections * PENUMCONNECTIONS;
+    typedef IEnumConnections * LPENUMCONNECTIONS;
+
+    typedef struct tagCONNECTDATA
+	{
+        IUnknown *  pUnk;
+        DWORD       dwCookie;
+	} CONNECTDATA;
+
+    typedef struct tagCONNECTDATA * PCONNECTDATA;
+    typedef struct tagCONNECTDATA * LPCONNECTDATA;
+
+    HRESULT Next
+	(
+	[in]                       ULONG           cConnections,
+	[out,
+	size_is(cConnections),
+	length_is(*lpcFetched)]    CONNECTDATA *   rgcd,
+	[out]                      ULONG *         lpcFetched
+	);
+
+
+    HRESULT Skip
+	(
+	[in]    ULONG cConnections
+	);
+
+    HRESULT Reset
+	(
+	void
+	);
+
+    HRESULT Clone
+	(
+	[out]   IEnumConnections ** ppEnum
+	);
+    }
+
+
+[
+    object,
+    uuid(B196B285-BAB4-101A-B69C-00AA00341D07),
+    pointer_default(unique)
+]
+interface IEnumConnectionPoints : IUnknown
+    {
+    typedef IEnumConnectionPoints * PENUMCONNECTIONPOINTS;
+    typedef IEnumConnectionPoints * LPENUMCONNECTIONPOINTS;
+
+    HRESULT Next
+	(
+        [in]                        ULONG               cConnections,
+        [out,
+         size_is(cConnections),
+         length_is(*lpcFetched)]    IConnectionPoint ** rgpcn,
+        [out]                       ULONG *             lpcFetched
+	);
+
+    HRESULT Skip
+	(
+        [in]    ULONG   cConnections
+	);
+
+    HRESULT Reset
+	(
+        void
+	);
+
+    HRESULT Clone
+	(
+        [out]   IEnumConnectionPoints **    ppEnum
+	);
+    }
+

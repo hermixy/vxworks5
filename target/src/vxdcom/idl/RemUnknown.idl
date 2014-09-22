@@ -1,0 +1,59 @@
+/* RemUnknown.idl - DCOM wire protocol */
+
+/* Copyright (c) 2000, Wind River Systems, Inc. */
+
+/*
+modification history
+--------------------
+01a,15feb00,dbs  created
+*/
+
+import "orpc.idl";
+
+[
+    object,
+    uuid(00000131-0000-0000-C000-000000000046)
+]
+interface IRemUnknown : IUnknown
+    {
+
+    // return structure from a QI call
+    typedef struct tagREMQIRESULT
+	{
+	HRESULT		hResult;	// result of call
+	STDOBJREF	std;		// data for returned interface
+	} REMQIRESULT;
+
+    HRESULT RemQueryInterface
+	(
+	[in] REFIPID		ipid,	// interface to QI on
+	[in] unsigned long	cRefs,	// count of AddRefs requested for each interface
+	[in] unsigned short	cIids,	// count of IIDs that follow
+	[in, size_is(cIids)] const IID* iids, // IIDs to query for
+	[out, size_is(,cIids)] REMQIRESULT **ppQIResults // results returned
+	);
+
+
+    // structure passed to AddRef/Release to specify interface and
+    // count of references to Add/Release.
+    typedef struct tagREMINTERFACEREF
+	{
+	IPID		ipid;		// ipid to AddRef/Release
+	unsigned long	cPublicRefs;	// public refs to add/release
+	unsigned long	cPrivateRefs;	// private refs to add/release
+	} REMINTERFACEREF;
+
+    HRESULT RemAddRef
+	(
+	[in] unsigned short cInterfaceRefs,
+	[in, size_is(cInterfaceRefs)] REMINTERFACEREF InterfaceRefs[],
+	[in, size_is(cInterfaceRefs)] HRESULT* pResults
+	);
+
+    HRESULT RemRelease
+	(
+	[in] unsigned short cInterfaceRefs,
+	[in, size_is(cInterfaceRefs)] REMINTERFACEREF InterfaceRefs[]
+	);
+    }
+
